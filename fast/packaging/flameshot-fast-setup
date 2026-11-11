@@ -8,9 +8,7 @@ Does, for the current user only:
   * adds a few keys to flameshot.ini (backed up first)
   * GNOME shortcuts:  Super+Shift+S  capture image
                       Super+Shift+T  capture and copy recognized TEXT (OCR)
-                      Shift+Print    capture image (GNOME cannot tell left and
-                                     right Shift apart); its built-in
-                                     Shift+Print "screenshot" binding is disabled
+                      Super+Print    capture image
     An existing custom shortcut on the same key is updated, not duplicated.
   * installs spawn-at (pointer query, GNOME extension) if it is missing
 Everything changed is recorded in ~/.local/share/flameshot-fast/backup.json;
@@ -115,7 +113,7 @@ def setup(a):
         wanted = [
             ("<Shift><Super>s", "Flameshot FAST: capture image", f"{launcher} gui", "flameshot-fast-gui"),
             ("<Shift><Super>t", "Flameshot FAST: capture text (OCR)", f"{launcher} ocr", "flameshot-fast-ocr"),
-            ("<Shift>Print", "Flameshot FAST: capture image (Shift+Print)", f"{launcher} gui", "flameshot-fast-print"),
+            ("<Super>Print", "Flameshot FAST: capture image (Super+Print)", f"{launcher} gui", "flameshot-fast-print"),
         ]
         paths = gs_get_list(S, "custom-keybindings")
         existing = {}
@@ -140,12 +138,6 @@ def setup(a):
             gs("set", k, "binding", binding)
             print(f"shortcut {binding}: {cmd}")
         gs("set", S, "custom-keybindings", str(paths))
-        # GNOME's own Shift+Print ("screenshot") would conflict
-        cur = gs("get", "org.gnome.shell.keybindings", "screenshot")
-        if "Print" in cur and "Shift" in cur:
-            backup.setdefault("gnome_screenshot_binding", cur)
-            gs("set", "org.gnome.shell.keybindings", "screenshot", "[]")
-            print("disabled GNOME's built-in Shift+Print binding (restored by --undo)")
     save_backup(backup)
     print("\nDone. First capture: GNOME shows a Share dialog once; select ALL screens,")
     print("keep 'Remember this selection' on, press Share. After that it is silent.")

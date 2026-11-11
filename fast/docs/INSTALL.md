@@ -23,7 +23,7 @@ and `wl-clipboard` (OCR and clipboard persistence).
   |---|---|
   | Super+Shift+S | capture image |
   | Super+Shift+T | capture, **copy recognized text** (OCR) |
-  | Shift+Print | capture image (GNOME cannot tell left from right Shift); its built-in "screenshot" binding is switched off |
+  | Super+Print | capture image |
 
 * installs `spawn-at` (bundled copy, also a GNOME extension) if it is not on the machine,
   so the monitor under the pointer is captured without the selector. Log out and in once
