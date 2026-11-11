@@ -9,6 +9,7 @@
 #include <QBuffer>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QStandardPaths>
 
 QString Ocr::tidy(const QString& raw)
 {
@@ -53,6 +54,33 @@ QString Ocr::recognize(const QPixmap& image, QString& error)
         return QString();
     }
     return tidy(QString::fromUtf8(tesseract.readAllStandardOutput()));
+}
+
+bool Ocr::copyTextPersistent(const QString& text)
+{
+    if (qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
+        return false;
+    }
+    const QString program =
+      QStandardPaths::findExecutable(QStringLiteral("wl-copy"));
+    if (program.isEmpty()) {
+        return false;
+    }
+    QProcess wlCopy;
+    wlCopy.start(program, {});
+    if (!wlCopy.waitForStarted(2000)) {
+        return false;
+    }
+    wlCopy.write(text.toUtf8());
+    wlCopy.closeWriteChannel();
+    // wl-copy forks into the background after reading stdin and the foreground
+    // process exits
+    if (!wlCopy.waitForFinished(3000)) {
+        wlCopy.kill();
+        return false;
+    }
+    return wlCopy.exitStatus() == QProcess::NormalExit &&
+           wlCopy.exitCode() == 0;
 }
 
 QString Ocr::recognizeWithNotification(const QPixmap& image)

@@ -657,6 +657,13 @@ void CaptureWidget::closeEvent(QCloseEvent* event)
                     return;
                 }
             }
+            if (!ocrText.isEmpty() && Ocr::copyTextPersistent(ocrText)) {
+                // wl-copy now owns the clipboard and outlives this process
+                m_clipboardWorkaroundDone = false;
+                event->accept();
+                QWidget::closeEvent(event);
+                return;
+            }
             AbstractLogger::info()
               << "GNOME Wayland detected; keeping capture window alive until "
                  "clipboard data is fetched.";

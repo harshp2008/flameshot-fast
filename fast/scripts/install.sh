@@ -36,6 +36,7 @@ MISSING=()
 need_pkg() { dpkg -s "$1" >/dev/null 2>&1 && printf '  ok  %-20s %s\n' "$1" "$(dpkg-query -W -f='${Version}' "$1")" || { printf '  MISSING %s\n' "$1"; MISSING+=("$1"); }; }
 need_pkg tesseract-ocr        # OCR engine (`flameshot ocr`)
 need_pkg tesseract-ocr-eng    # English language data
+need_pkg wl-clipboard         # keeps OCR text on the clipboard after Flameshot exits (wl-copy)
 need_pkg libpipewire-0.3-0t64 || true
 if command -v spawn-at >/dev/null; then
     echo "  ok  spawn-at            $(spawn-at --version 2>&1 | head -1)"

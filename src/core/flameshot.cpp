@@ -513,7 +513,7 @@ void Flameshot::exportCapture(const QPixmap& capture,
     if (tasks & CR::COPY) {
         if (tasks & CR::OCR) {
             const QString text = Ocr::recognizeWithNotification(capture);
-            if (!text.isEmpty()) {
+            if (!text.isEmpty() && !Ocr::copyTextPersistent(text)) {
                 FlameshotDaemon::copyToClipboard(text);
             }
         } else {
