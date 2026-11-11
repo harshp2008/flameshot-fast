@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Per-user setup for flameshot-fast (no root needed).
+
+  flameshot-fast-setup [--undo] [--launcher PATH] [--config-dir DIR]
+                       [--no-config] [--no-spawn-at] [--no-shortcuts]
+
+Does, for the current user only:
+  * adds a few keys to flameshot.ini (backed up first)
+  * GNOME shortcuts:  Super+Shift+S  capture image
+                      Super+Shift+T  capture and copy recognized TEXT (OCR)
+                      Shift+Print    capture image (GNOME cannot tell left and
+                                     right Shift apart); its built-in
+                                     Shift+Print "screenshot" binding is disabled
+    An existing custom shortcut on the same key is updated, not duplicated.
+  * installs spawn-at (pointer query, GNOME extension) if it is missing
+Everything changed is recorded in ~/.local/share/flameshot-fast/backup.json;
+`--undo` restores it.
+"""
+import argparse
+import ast
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+S = "org.gnome.settings-daemon.plugins.media-keys"
+BASE = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
+HOME = os.path.expanduser("~")
+STATE = os.path.join(HOME, ".local/share/flameshot-fast")
+BACKUP = os.path.join(STATE, "backup.json")
+
+
+def gs(*args):
+    return subprocess.check_output(["gsettings", *args], text=True).strip()
+
+
+def gs_get_list(schema, key):
+    return ast.literal_eval(gs("get", schema, key))
+
+
+def custom_path_schema(p):
+    return f"{S}.custom-keybinding:{p}"
+
+
+def load_backup():
+    try:
+        with open(BACKUP) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_backup(b):
+    os.makedirs(STATE, exist_ok=True)
+    with open(BACKUP, "w") as f:
+        json.dump(b, f, indent=1)
+
+
+def set_ini(path, kv):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    lines = open(path).read().splitlines() if os.path.exists(path) else []
+    if not any(l.strip() == "[General]" for l in lines):
+        lines.insert(0, "[General]")
+    for k, v in kv.items():
+        for i, l in enumerate(lines):
+            if l.startswith(k + "="):
+                lines[i] = f"{k}={v}"
+                break
+        else:
+            idx = next(i for i, l in enumerate(lines) if l.strip() == "[General]")
+            lines.insert(idx + 1, f"{k}={v}")
+    with open(path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def setup(a):
+    backup = load_backup()
+    backup.setdefault("time", time.strftime("%F %T"))
+
+    cfg_dir = a.config_dir or os.path.join(os.environ.get("XDG_CONFIG_HOME", HOME + "/.config"), "flameshot")
+    ini = os.path.join(cfg_dir, "flameshot.ini")
+
+    # spawn-at
+    spawn = shutil.which("spawn-at") or os.path.join(HOME, ".local/bin/spawn-at")
+    if not a.no_spawn_at and not os.path.exists(spawn):
+        bundled = "/usr/lib/flameshot-fast/spawn-at"
+        if os.path.exists(bundled):
+            print("Installing spawn-at (GNOME extension + ~/.local/bin/spawn-at) ...")
+            r = subprocess.run([bundled, "install", "--yes", "--headless"])
+            if r.returncode == 0:
+                backup["spawn_at_installed"] = True
+                print("  note: the spawn-at GNOME extension may need a log out/in to activate")
+            spawn = shutil.which("spawn-at") or spawn
+        else:
+            print("spawn-at is not available; the monitor selector will be shown instead of using the pointer")
+
+    if not a.no_config:
+        if os.path.exists(ini):
+            bak = ini + ".before-flameshot-fast"
+            if not os.path.exists(bak):
+                shutil.copy(ini, bak)
+                backup["ini_backup"] = bak
+        else:
+            backup["ini_created"] = ini
+        kv = {"useScreenCastCapture": "true", "showDesktopNotification": "true"}
+        if os.path.exists(spawn):
+            kv["screenCastPointerCommand"] = f"{spawn} query pointer"
+        set_ini(ini, kv)
+        print(f"config updated: {ini}")
+
+    if not a.no_shortcuts:
+        launcher = a.launcher
+        wanted = [
+            ("<Shift><Super>s", "Flameshot FAST: capture image", f"{launcher} gui", "flameshot-fast-gui"),
+            ("<Shift><Super>t", "Flameshot FAST: capture text (OCR)", f"{launcher} ocr", "flameshot-fast-ocr"),
+            ("<Shift>Print", "Flameshot FAST: capture image (Shift+Print)", f"{launcher} gui", "flameshot-fast-print"),
+        ]
+        paths = gs_get_list(S, "custom-keybindings")
+        existing = {}
+        for p in paths:
+            try:
+                existing[gs("get", custom_path_schema(p), "binding").strip("'")] = p
+            except subprocess.CalledProcessError:
+                pass
+        changed = backup.setdefault("shortcuts", {})
+        for binding, name, cmd, key in wanted:
+            if binding in existing:
+                p = existing[binding]
+                k = custom_path_schema(p)
+                changed.setdefault(p, {"name": gs("get", k, "name"), "command": gs("get", k, "command"), "created": False})
+            else:
+                p = BASE + key + "/"
+                k = custom_path_schema(p)
+                paths.append(p)
+                changed[p] = {"created": True}
+            gs("set", k, "name", name)
+            gs("set", k, "command", cmd)
+            gs("set", k, "binding", binding)
+            print(f"shortcut {binding}: {cmd}")
+        gs("set", S, "custom-keybindings", str(paths))
+        # GNOME's own Shift+Print ("screenshot") would conflict
+        cur = gs("get", "org.gnome.shell.keybindings", "screenshot")
+        if "Print" in cur and "Shift" in cur:
+            backup.setdefault("gnome_screenshot_binding", cur)
+            gs("set", "org.gnome.shell.keybindings", "screenshot", "[]")
+            print("disabled GNOME's built-in Shift+Print binding (restored by --undo)")
+    save_backup(backup)
+    print("\nDone. First capture: GNOME shows a Share dialog once; select ALL screens,")
+    print("keep 'Remember this selection' on, press Share. After that it is silent.")
+
+
+def undo(a):
+    backup = load_backup()
+    if not backup:
+        print("nothing to undo")
+        return
+    paths = gs_get_list(S, "custom-keybindings")
+    for p, info in backup.get("shortcuts", {}).items():
+        k = custom_path_schema(p)
+        if info.get("created"):
+            if p in paths:
+                paths.remove(p)
+            for field in ("name", "command", "binding"):
+                subprocess.run(["gsettings", "reset", k, field])
+        else:
+            gs("set", k, "name", ast.literal_eval(info["name"]))
+            gs("set", k, "command", ast.literal_eval(info["command"]))
+    if backup.get("shortcuts"):
+        gs("set", S, "custom-keybindings", str(paths))
+    if "gnome_screenshot_binding" in backup:
+        gs("set", "org.gnome.shell.keybindings", "screenshot", backup["gnome_screenshot_binding"])
+    ini = a.config_dir and os.path.join(a.config_dir, "flameshot.ini")
+    if backup.get("ini_backup"):
+        shutil.copy(backup["ini_backup"], backup["ini_backup"][: -len(".before-flameshot-fast")])
+    elif backup.get("ini_created") and os.path.exists(backup["ini_created"]):
+        os.remove(backup["ini_created"])
+    os.remove(BACKUP)
+    print("restored (spawn-at, if it was installed by setup, is left in place)")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--undo", action="store_true")
+    ap.add_argument("--launcher", default="/usr/bin/flameshot-fast-launch")
+    ap.add_argument("--config-dir")
+    ap.add_argument("--no-config", action="store_true")
+    ap.add_argument("--no-spawn-at", action="store_true")
+    ap.add_argument("--no-shortcuts", action="store_true")
+    a = ap.parse_args()
+    if not shutil.which("gsettings") and not a.no_shortcuts:
+        sys.exit("gsettings not found (GNOME required for the shortcuts; use --no-shortcuts)")
+    (undo if a.undo else setup)(a)
+
+
+main()

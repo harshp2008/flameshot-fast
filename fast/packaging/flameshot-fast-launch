@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Shortcut launcher:  flameshot-fast-launch [gui|ocr]
+# The ScreenCast permission is remembered per launching application and per
+# monitor layout; "auto" shows the Share dialog only when it is missing (first
+# run, or after plugging/unplugging a monitor). Log: ~/.cache/flameshot-fast/
+SUB="${1:-gui}"
+BIN="${FLAMESHOT_FAST_BIN:-/usr/bin/flameshot}"
+LOGDIR="${XDG_CACHE_HOME:-$HOME/.cache}/flameshot-fast"
+mkdir -p "$LOGDIR"
+LOG="$LOGDIR/last.log"
+FLAMESHOT_SCREENCAST_SETUP=auto "$BIN" "$SUB" 2>"$LOG"
+rc=$?
+cat "$LOG" >&2
+{ echo "== $(date +%T) $SUB rc=$rc"; cat "$LOG"; } >>"$LOGDIR/history.log"
+tail -n 300 "$LOGDIR/history.log" >"$LOGDIR/history.log.tmp" && mv "$LOGDIR/history.log.tmp" "$LOGDIR/history.log"
+exit $rc
