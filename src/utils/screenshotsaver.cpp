@@ -12,8 +12,10 @@
 #include "utils/systemnotification.h"
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
+#include <QFileInfo>
 #include <QImageWriter>
 #include <QPainter>
 #include <QPixmap>
@@ -345,7 +347,18 @@ private:
                 const QString dir = QStandardPaths::writableLocation(
                   QStandardPaths::CacheLocation);
                 QDir().mkpath(dir);
-                preview = dir + QStringLiteral("/notification-preview.png");
+                // A new name every time: GNOME caches icons by path and would
+                // keep showing the first preview otherwise. Old ones go away.
+                for (const QFileInfo& old : QDir(dir).entryInfoList(
+                       { QStringLiteral("notification-preview-*.png") },
+                       QDir::Files)) {
+                    if (old.lastModified().secsTo(
+                          QDateTime::currentDateTime()) > 600) {
+                        QFile::remove(old.absoluteFilePath());
+                    }
+                }
+                preview = dir + QStringLiteral("/notification-preview-%1.png")
+                                  .arg(QDateTime::currentMSecsSinceEpoch());
                 // GNOME draws the preview into a square: letterbox it on a
                 // transparent square canvas so it is not stretched.
                 constexpr int side = 256;
