@@ -161,6 +161,12 @@ public:
                          bool)
     CONFIG_GETTER_SETTER(useScreenCastCapture, setUseScreenCastCapture, bool)
     CONFIG_GETTER_SETTER(screenCastEmbedCursor, setScreenCastEmbedCursor, bool)
+    CONFIG_GETTER_SETTER(screenCastShowMonitorSelector,
+                         setScreenCastShowMonitorSelector,
+                         bool)
+    CONFIG_GETTER_SETTER(screenCastPointerCommand,
+                         setScreenCastPointerCommand,
+                         QString)
     CONFIG_GETTER_SETTER(screenCastRestoreToken,
                          setScreenCastRestoreToken,
                          QString)

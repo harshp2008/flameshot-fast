@@ -55,6 +55,7 @@ private:
     QPixmap x11LegacyScreenshot();
     QPixmap unixScreenshot(bool& ok);
     bool tryScreenCast(int preSelectedMonitor);
+    int pointerMonitor();
 
     DesktopInfo m_info;
     QPixmap Screenshot;

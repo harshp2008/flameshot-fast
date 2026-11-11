@@ -157,6 +157,12 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("useScreenCastCapture"        ,Bool               ( false         )),
     // Include the mouse cursor in ScreenCast captures
     OPTION("screenCastEmbedCursor"       ,Bool               ( false         )),
+    // Show the monitor selector even when the pointer's monitor is known
+    OPTION("screenCastShowMonitorSelector",Bool              ( false         )),
+    // Shell command printing the pointer position as "x, y" (logical global
+    // coordinates), e.g. "spawn-at query pointer". Used to pick the monitor
+    // instead of the selector. Empty = always show the selector.
+    OPTION("screenCastPointerCommand"    ,String             ( QString()     )),
     // Written by Flameshot: lets the portal skip its permission dialog
     OPTION("screenCastRestoreToken"      ,String             ( QString()     )),
 #endif

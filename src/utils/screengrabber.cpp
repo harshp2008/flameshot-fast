@@ -269,6 +269,48 @@ QPixmap ScreenGrabber::unixScreenshot(bool& ok)
 #endif
 }
 
+// Monitor under the pointer according to the user's pointer command, or -1.
+// Qt cannot read the pointer on Wayland, hence the external command.
+int ScreenGrabber::pointerMonitor()
+{
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+    ConfigHandler config;
+    const QString command = config.screenCastPointerCommand();
+    if (!config.useScreenCastCapture() ||
+        config.screenCastShowMonitorSelector() || command.isEmpty() ||
+        QGuiApplication::screens().size() < 2) {
+        return -1;
+    }
+    QProcess process;
+    process.start(QStringLiteral("/bin/sh"), { QStringLiteral("-c"), command });
+    QPoint point;
+    if (!process.waitForFinished(1500) ||
+        !ScreenCastGrabber::parsePointer(
+          QString::fromUtf8(process.readAllStandardOutput()), point)) {
+        AbstractLogger::warning(AbstractLogger::Stderr |
+                                AbstractLogger::LogFile)
+          << tr("Pointer command failed or printed no \"x, y\"; showing "
+                "the monitor selector");
+        return -1;
+    }
+    QList<QRect> geometries;
+    for (QScreen* screen : QGuiApplication::screens()) {
+        geometries.append(screen->geometry());
+    }
+    const int index = ScreenCastGrabber::monitorAt(geometries, point);
+    if (index < 0) {
+        AbstractLogger::warning(AbstractLogger::Stderr |
+                                AbstractLogger::LogFile)
+          << tr("Pointer %1,%2 is on no monitor; showing the monitor selector")
+               .arg(point.x())
+               .arg(point.y());
+    }
+    return index;
+#else
+    return -1;
+#endif
+}
+
 // Try the optional ScreenCast backend. On success m_screenCastShots holds one
 // image for every monitor that may be needed; on any failure nothing changes
 // and the caller uses the regular Screenshot portal path.
@@ -477,7 +519,12 @@ QPixmap ScreenGrabber::grabEntireDesktop(bool& ok, int preSelectedMonitor)
 #elif defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
     // Optional fast path: per-monitor images, cropToMonitor() uses them
     // instead of cropping the (then empty) full-desktop pixmap.
-    if (!tryScreenCast(preSelectedMonitor)) {
+    int autoMonitor = preSelectedMonitor < 0 ? pointerMonitor() : -1;
+    if (tryScreenCast(autoMonitor >= 0 ? autoMonitor : preSelectedMonitor)) {
+        if (autoMonitor >= 0) {
+            preSelectedMonitor = autoMonitor; // skip the monitor selector
+        }
+    } else {
         screenshot = unixScreenshot(ok);
         if (!ok) {
             return QPixmap();

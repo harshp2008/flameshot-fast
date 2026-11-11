@@ -13,6 +13,8 @@ private slots:
     void matchToleranceForFractionalScale();
     void matchRejectsFarAndAmbiguous();
     void matchNeverSharesStream();
+    void pointerParsing();
+    void monitorAtPoint();
     void bufferBgrx();
     void bufferRgbx();
     void bufferBgraAndRgba();
@@ -100,6 +102,30 @@ void TstPure::matchNeverSharesStream()
                { S(1, 0, 0, 1920, 1080) },
                { QRect(0, 0, 1920, 1080), QRect(0, 0, 1920, 1080) }),
              QList<int>({ -1, -1 }));
+}
+
+void TstPure::pointerParsing()
+{
+    QPoint p;
+    QVERIFY(ScreenCastGrabber::parsePointer("1154, 488\n", p));
+    QCOMPARE(p, QPoint(1154, 488));
+    QVERIFY(ScreenCastGrabber::parsePointer("  -20 30", p));
+    QCOMPARE(p, QPoint(-20, 30));
+    QVERIFY(ScreenCastGrabber::parsePointer("x=5,y=6", p) == false);
+    QVERIFY(!ScreenCastGrabber::parsePointer("", p));
+    QVERIFY(!ScreenCastGrabber::parsePointer("error: no shell", p));
+}
+
+void TstPure::monitorAtPoint()
+{
+    const QList<QRect> screens = { QRect(0, 0, 1920, 1080),
+                                   QRect(1920, 0, 1464, 915),
+                                   QRect(3384, 0, 936, 432) };
+    QCOMPARE(ScreenCastGrabber::monitorAt(screens, QPoint(1154, 488)), 0);
+    QCOMPARE(ScreenCastGrabber::monitorAt(screens, QPoint(1920, 0)), 1);
+    QCOMPARE(ScreenCastGrabber::monitorAt(screens, QPoint(3383, 914)), 1);
+    QCOMPARE(ScreenCastGrabber::monitorAt(screens, QPoint(4000, 100)), 2);
+    QCOMPARE(ScreenCastGrabber::monitorAt(screens, QPoint(4000, 800)), -1);
 }
 
 void TstPure::bufferBgrx()

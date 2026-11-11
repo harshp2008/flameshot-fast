@@ -3,6 +3,7 @@
 
 #include "screencastgrabber.h"
 
+#include <QRegularExpression>
 #include <QtGlobal>
 #include <cstring>
 
@@ -90,6 +91,29 @@ QList<int> ScreenCastGrabber::matchStreamsToScreens(
         }
     }
     return result;
+}
+
+bool ScreenCastGrabber::parsePointer(const QString& text, QPoint& out)
+{
+    static const QRegularExpression re(
+      QStringLiteral("^\\s*(-?\\d+)[^\\d-]+(-?\\d+)"));
+    const QRegularExpressionMatch m = re.match(text);
+    if (!m.hasMatch()) {
+        return false;
+    }
+    out = QPoint(m.captured(1).toInt(), m.captured(2).toInt());
+    return true;
+}
+
+int ScreenCastGrabber::monitorAt(const QList<QRect>& screenGeometries,
+                                 const QPoint& p)
+{
+    for (int i = 0; i < screenGeometries.size(); ++i) {
+        if (screenGeometries.at(i).contains(p)) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 QImage ScreenCastGrabber::imageFromBuffer(ScreenCastPixelFormat format,

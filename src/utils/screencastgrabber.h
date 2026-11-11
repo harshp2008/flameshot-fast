@@ -93,6 +93,12 @@ public:
       const QList<QRect>& screenGeometries,
       int tolerance = 2);
 
+    /// Parses "x, y" (any non-digit separator) into a point
+    static bool parsePointer(const QString& text, QPoint& out);
+
+    /// Index of the screen geometry containing `p`, or -1
+    static int monitorAt(const QList<QRect>& screenGeometries, const QPoint& p);
+
     /**
      * Copies `data` (rows of `stride` bytes) into a new QImage. Returns a null
      * image when size, stride or the buffer length are inconsistent.
