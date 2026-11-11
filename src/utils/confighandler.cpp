@@ -152,6 +152,13 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     // Bypass freedesktop portal and use Qt's native X11
     // screenshot method. Intended for WMs without xdg-desktop-portal.
     OPTION("useX11LegacyScreenshot"      ,Bool               ( false         )),
+    // Optional fast capture of a single monitor through the ScreenCast
+    // portal and PipeWire (Wayland). Falls back to the Screenshot portal.
+    OPTION("useScreenCastCapture"        ,Bool               ( false         )),
+    // Include the mouse cursor in ScreenCast captures
+    OPTION("screenCastEmbedCursor"       ,Bool               ( false         )),
+    // Written by Flameshot: lets the portal skip its permission dialog
+    OPTION("screenCastRestoreToken"      ,String             ( QString()     )),
 #endif
 };
 
