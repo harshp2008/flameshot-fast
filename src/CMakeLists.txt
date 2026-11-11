@@ -23,6 +23,20 @@ if (USE_WAYLAND_CLIPBOARD)
     find_package(KF6GuiAddons)
 endif()
 
+# Optional ScreenCast portal + PipeWire capture backend (Linux/BSD only)
+set(FLAMESHOT_HAVE_PIPEWIRE OFF)
+if (USE_SCREENCAST AND UNIX AND NOT APPLE)
+    find_package(PkgConfig QUIET)
+    if (PkgConfig_FOUND)
+        pkg_check_modules(PIPEWIRE IMPORTED_TARGET libpipewire-0.3)
+    endif()
+    if (PIPEWIRE_FOUND)
+        set(FLAMESHOT_HAVE_PIPEWIRE ON)
+    else()
+        message(STATUS "libpipewire-0.3 not found: building without ScreenCast capture")
+    endif()
+endif()
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -201,6 +215,12 @@ target_link_libraries(
         flameshot
         Qt${QT_VERSION_MAJOR}::DBus
 )
+endif()
+
+if (FLAMESHOT_HAVE_PIPEWIRE)
+    message(STATUS "ScreenCast capture backend is enabled (libpipewire ${PIPEWIRE_VERSION})")
+    target_compile_definitions(flameshot PRIVATE FLAMESHOT_HAVE_PIPEWIRE=1)
+    target_link_libraries(flameshot PkgConfig::PIPEWIRE)
 endif()
 
 if (USE_KDSINGLEAPPLICATION)

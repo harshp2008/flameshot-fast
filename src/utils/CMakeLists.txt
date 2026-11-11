@@ -33,6 +33,8 @@ target_sources(
   flameshot
   PRIVATE request.h
           request.cpp
+          screencastgrabber.h
+          screencastgrabber.cpp
 )
 ENDIF()
 
