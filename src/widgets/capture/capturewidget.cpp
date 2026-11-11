@@ -648,7 +648,12 @@ void CaptureWidget::closeEvent(QCloseEvent* event)
             m_context.request.removeTask(CaptureRequest::COPY);
             QString ocrText;
             if (m_context.request.tasks() & CaptureRequest::OCR) {
-                ocrText = Ocr::recognizeWithNotification(pixmap(), this);
+                // Vanish at once so Ctrl+C / accept feels instant; OCR and the
+                // clipboard work happen with the window already hidden.
+                const QPixmap shot = pixmap();
+                hide();
+                QCoreApplication::processEvents();
+                ocrText = Ocr::recognizeWithNotification(shot, this);
                 if (ocrText.isEmpty()) {
                     // nothing to copy: close normally
                     m_clipboardWorkaroundDone = false;
