@@ -462,6 +462,17 @@ void CaptureWidget::startColorGrab()
     }
 }
 
+void CaptureWidget::copyTextAndClose()
+{
+    // Same as Ctrl+C, but the selection is recognized (OCR) and the text is
+    // copied instead of the image.
+    m_context.request.addTask(CaptureRequest::OCR);
+    m_context.request.addTask(CaptureRequest::COPY);
+    handleToolSignal(CaptureTool::REQ_CLEAR_SELECTION);
+    handleToolSignal(CaptureTool::REQ_CAPTURE_DONE_OK);
+    handleToolSignal(CaptureTool::REQ_CLOSE_GUI);
+}
+
 void CaptureWidget::showxywh()
 {
     m_xywhDisplay = true;
@@ -489,6 +500,10 @@ void CaptureWidget::initHelpMessage()
             keyMap << std::pair(shortcut, tool->description());
         }
     }
+    keyMap << std::pair(ConfigHandler().shortcut("TYPE_COPY_TEXT"),
+                        tr("Copy text from selection (OCR)"));
+    keyMap << std::pair(ConfigHandler().shortcut("TYPE_GRAB_COLOR"),
+                        tr("Pick a color from the screenshot"));
     keyMap << std::pair(tr("Mouse Wheel"), tr("Change tool size"));
     keyMap << std::pair(tr("Right Click"), tr("Show color picker"));
     keyMap << std::pair(ConfigHandler().shortcut("TYPE_TOGGLE_PANEL"),
@@ -1314,6 +1329,12 @@ void CaptureWidget::initPanel()
             this,
             &CaptureWidget::setDrawColor);
     connect(m_sidePanel,
+            &SidePanelWidget::colorGrabCopied,
+            this,
+            [this](const QString& hex) {
+                m_notifierBox->showMessage(tr("%1 copied").arg(hex));
+            });
+    connect(m_sidePanel,
             &SidePanelWidget::toolSizeChanged,
             this,
             &CaptureWidget::onToolSizeChanged);
@@ -1716,6 +1737,9 @@ void CaptureWidget::initShortcuts()
     newShortcut(QKeySequence(ConfigHandler().shortcut("TYPE_GRAB_COLOR")),
                 this,
                 SLOT(startColorGrab()));
+    newShortcut(QKeySequence(ConfigHandler().shortcut("TYPE_COPY_TEXT")),
+                this,
+                SLOT(copyTextAndClose()));
 
     newShortcut(QKeySequence(ConfigHandler().shortcut("TYPE_RESIZE_LEFT")),
                 m_selection,

@@ -103,6 +103,8 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("savePathFixed"               ,Bool               ( false         )),
     OPTION("saveAsFileExtension"         ,SaveFileExtension  (               )),
     OPTION("saveLastRegion"              ,Bool               ( false         )),
+    // Copy the hex code to the clipboard when a color is grabbed (G)
+    OPTION("copyGrabbedColor"            ,Bool               ( true          )),
     OPTION("uploadHistoryMax"            ,LowerBoundedInt    ( 0, 25         )),
     OPTION("undoLimit"                   ,BoundedInt         ( 0, 999, 100   )),
     // Interface tab
@@ -198,6 +200,7 @@ static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
     SHORTCUT("TYPE_TEXT"                ,   "T"                     ),
     SHORTCUT("TYPE_TOGGLE_PANEL"        ,   "Space"                 ),
     SHORTCUT("TYPE_GRAB_COLOR"          ,   "G"                     ),
+    SHORTCUT("TYPE_COPY_TEXT"           ,   "Ctrl+Shift+C"          ),
     SHORTCUT("TYPE_RESIZE_LEFT"         ,   "Shift+Left"            ),
     SHORTCUT("TYPE_RESIZE_RIGHT"        ,   "Shift+Right"           ),
     SHORTCUT("TYPE_RESIZE_UP"           ,   "Shift+Up"              ),

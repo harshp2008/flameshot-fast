@@ -3,12 +3,15 @@
 
 #include "sidepanelwidget.h"
 #include "utils/colorutils.h"
+#include "utils/confighandler.h"
+#include "utils/ocr.h"
 #include "utils/pathinfo.h"
 #include "widgets/panel/colorgrabwidget.h"
 #include "widgets/panel/utilitypanel.h"
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
@@ -180,6 +183,13 @@ void SidePanelWidget::onColorGrabFinished()
     finalizeGrab();
     m_color = m_colorGrabber->color();
     emit colorChanged(m_color);
+    if (ConfigHandler().copyGrabbedColor()) {
+        const QString hex = m_color.name(QColor::HexRgb);
+        if (!Ocr::copyTextPersistent(hex)) {
+            QApplication::clipboard()->setText(hex);
+        }
+        emit colorGrabCopied(hex);
+    }
 }
 
 void SidePanelWidget::onColorGrabAborted()

@@ -109,6 +109,16 @@ shows the first 300 characters (or "No text found"); it needs
 notifications"), which also enables the "Capture saved to clipboard"
 notification for image copies.
 
+## Extra shortcuts inside the capture window
+
+| Key | Action |
+|---|---|
+| Ctrl+Shift+C | copy the **recognized text** of the selection (OCR) from any `gui` capture, then close |
+| G | pick a color from the screenshot (Flameshot's own eyedropper); it now also copies the hex code (config key `copyGrabbedColor`, default `true`) and shows "#rrggbb copied" |
+
+Both are listed in the help overlay and can be rebound in Settings -> Shortcuts
+(`TYPE_COPY_TEXT`, `TYPE_GRAB_COLOR`).
+
 ## Install (user level, no sudo)
 
 ```bash

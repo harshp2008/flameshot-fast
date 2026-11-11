@@ -93,6 +93,7 @@ private slots:
     void onGridSizeChanged(int size);
 
     void startColorGrab();
+    void copyTextAndClose();
 
 public:
     void removeToolObject(int index = -1);

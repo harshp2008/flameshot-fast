@@ -30,6 +30,7 @@ public:
 
 signals:
     void colorChanged(const QColor& color);
+    void colorGrabCopied(const QString& hex);
     void toolSizeChanged(int size);
     void togglePanel();
     void showPanel();
