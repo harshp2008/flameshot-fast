@@ -87,7 +87,14 @@ name_owned() {
         --method org.freedesktop.DBus.NameHasOwner org.flameshot.Flameshot 2>/dev/null |
         grep -q true
 }
-fs_windows() { spawn-at query windows 2>/dev/null | awk 'NR>1 && tolower($3) ~ /flameshot/'; }
+# Any window of class flameshot (used for leftover checks)
+fs_any_windows() { spawn-at query windows 2>/dev/null | awk 'NR>1 && tolower($3) ~ /flameshot/'; }
+# The capture window or the monitor selector: fullscreen, or at least 200 px
+# wide. Flameshot also maps a 1x1 helper window early; that one must not count.
+fs_windows() {
+    spawn-at query windows 2>/dev/null | awk 'NR>1 && tolower($3) ~ /flameshot/ {
+        split($6, g, "x"); if ($5 == "fullscreen" || g[1] + 0 >= 200) print }'
+}
 
 if pgrep -x flameshot >/dev/null || name_owned; then
     echo "a Flameshot is already running; stop it first (not touching it)." >&2
@@ -173,8 +180,8 @@ for mode in "${MODE_LIST[@]}"; do
             vals+=("$(printf '%.3f' "$v")")
         fi
         # leftover Flameshot windows would skew the next run
-        for _ in $(seq 40); do [ -z "$(fs_windows)" ] && break; sleep 0.1; done
-        [ -n "$(fs_windows)" ] && { echo "leftover Flameshot window after run; stopping" >&2; exit 4; }
+        for _ in $(seq 40); do [ -z "$(fs_any_windows)" ] && break; sleep 0.1; done
+        [ -n "$(fs_any_windows)" ] && { echo "leftover Flameshot window after run; stopping" >&2; exit 4; }
     done
     if [ "${#vals[@]}" -gt 0 ]; then
         mn=$(printf '%s\n' "${vals[@]}" | sort -n | head -1)
