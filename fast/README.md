@@ -121,7 +121,7 @@ color, and HEX / RGB / HSL / HSV rows with copy buttons ("Copied to clipboard").
 Its Pick button starts again; right-click a history swatch to remove it. The
 history is `~/.local/share/flameshot/color-history.json` (24 colors). Only the
 monitor under the pointer is shown, as with `gui` (it uses the same fast capture).
-`flameshot-fast-setup` binds it to Ctrl+Shift+G.
+`flameshot-fast-setup` binds it to Super+Shift+G.
 
 ## Extra shortcuts inside the capture window
 

@@ -39,7 +39,7 @@ and `wl-clipboard` (OCR and clipboard persistence).
   | Super+Shift+S | capture image |
   | Super+Shift+T | capture, **copy recognized text** (OCR) |
   | Super+Print | capture image |
-  | Ctrl+Shift+G | **color picker** (`flameshot color`) |
+  | Super+Shift+G | **color picker** (`flameshot color`) |
 
 * installs `spawn-at` (bundled copy, also a GNOME extension) if it is not on the machine,
   so the monitor under the pointer is captured without the selector. Log out and in once
