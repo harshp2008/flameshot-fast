@@ -66,7 +66,7 @@ MOCKPID=""
 start_mock() { # mode pw [streams]
     stop_mock
     : >"$MOCK_LOG"
-    MOCK_MODE="$1" MOCK_PW="$2" MOCK_STREAMS="${3:-40:0,0,800,600}" MOCK_SHOT="${MOCK_SHOT:-}" \
+    MOCK_SHOT_SRC="${MOCK_SHOT_SRC:-}" MOCK_MODE="$1" MOCK_PW="$2" MOCK_STREAMS="${3:-40:0,0,800,600}" MOCK_SHOT="${MOCK_SHOT:-}" \
         python3 "$T/mock_portal.py" >"$SB/mock.out" 2>&1 &
     MOCKPID=$!
     PIDS+=("$MOCKPID")
@@ -239,6 +239,22 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
     stop_mock; new_cfg true
     FLAMESHOT_SCREENCAST_SETUP=1 fs_capture
     grep -q "ScreenCast capture failed" "$SB/fs.log" && pass "no portal service: ScreenCast failure logged, stock path attempted (fails here because no Screenshot portal either: rc=$FSRC)" || { fail "no portal"; head "$SB/fs.log"; }
+
+    # G: `flameshot ocr` copies recognized text (needs tesseract), line breaks kept
+    if command -v tesseract >/dev/null; then
+        "$B/make_text_png" "$SB/text.png" 2>/dev/null
+        MOCK_SHOT_SRC="$SB/text.png" start_mock ok silent
+        new_cfg false
+        rm -rf "$SB/out"; mkdir -p "$SB/out"
+        timeout 60 "$FS" ocr --accept-on-select -c -p "$SB/out" --region 800x800+0+0 >"$SB/fs.log" 2>&1
+        if grep -q "OCR text copied to clipboard (50 characters)" "$SB/fs.log"; then
+            pass "flameshot ocr: text recognized, line and paragraph breaks kept (50 chars)  [$(grep -o 'OCR text copied[^)]*)' "$SB/fs.log")]"
+        else
+            fail "flameshot ocr"; sed 's/^/      /' "$SB/fs.log" | head; mkdir -p "$ROOT/fast/out"; cp "$SB"/out/*.png "$ROOT/fast/out/ocr-debug.png" 2>/dev/null
+        fi
+    else
+        echo "SKIP  tesseract not installed"
+    fi
 else
     echo "SKIP  flameshot binary ($FS) not built or PipeWire e2e unavailable"
 fi

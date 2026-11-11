@@ -19,6 +19,7 @@ target_sources(
           systemnotification.cpp
           valuehandler.cpp
           screenshotsaver.cpp
+          ocr.cpp
           globalvalues.cpp
           desktopfileparse.cpp
           desktopinfo.cpp

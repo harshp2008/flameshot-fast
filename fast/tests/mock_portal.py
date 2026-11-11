@@ -9,6 +9,7 @@ Runs on a PRIVATE session bus only (DBUS_SESSION_BUS_ADDRESS). Behaviour:
   MOCK_PW_SOCKET  path of the private PipeWire socket (MOCK_PW=real)
   MOCK_LOG    file that receives one line per call
   MOCK_SHOT   PNG written for Screenshot() (stock-path fallback tests)
+  MOCK_SHOT_SRC  optional PNG copied there instead of the generated red one
 """
 import os
 import socket
@@ -112,7 +113,12 @@ def on_call(c, sender, path, iface, method, params, inv):
         log("Screenshot")
         inv.return_value(GLib.Variant("(o)", (rp,)))
         if SHOT:
-            write_png(SHOT)
+            src = os.environ.get("MOCK_SHOT_SRC")
+            if src:
+                import shutil
+                shutil.copyfile(src, SHOT)
+            else:
+                write_png(SHOT)
             respond(rp, 0, {"uri": GLib.Variant("s", "file://" + SHOT)})
         else:
             respond(rp, 2, {})

@@ -32,3 +32,6 @@ target_link_libraries(flow_test PRIVATE screencast_under_test)
 # Test producer: a PipeWire video source used with a private PipeWire daemon
 add_executable(pw_source pw_source.cpp)
 target_link_libraries(pw_source PRIVATE PkgConfig::PIPEWIRE)
+
+add_executable(make_text_png make_text_png.cpp)
+target_link_libraries(make_text_png PRIVATE Qt6::Gui)

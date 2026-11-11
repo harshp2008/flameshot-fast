@@ -294,6 +294,9 @@ public:
 protected:
     QStringList formats() const override
     {
+        if (m_image.isNull()) { // text mode
+            return QMimeData::formats();
+        }
         return { QStringLiteral("image/png"),
                  QStringLiteral("application/x-qt-image") };
     }
@@ -338,9 +341,15 @@ private:
     QPointer<QWidget> m_owner;
 };
 
-bool saveToClipboardGnomeWorkaround(const QPixmap& pixmap, QWidget* keepAlive)
+bool saveToClipboardGnomeWorkaround(const QPixmap& pixmap,
+                                    QWidget* keepAlive,
+                                    const QString& text)
 {
-    auto* mimeData = new ClipboardWatcherMimeData(pixmap.toImage(), keepAlive);
+    auto* mimeData = new ClipboardWatcherMimeData(
+      text.isEmpty() ? pixmap.toImage() : QImage(), keepAlive);
+    if (!text.isEmpty()) {
+        mimeData->setText(text);
+    }
     QClipboard* clipboard = QGuiApplication::clipboard();
     clipboard->setMimeData(mimeData);
 

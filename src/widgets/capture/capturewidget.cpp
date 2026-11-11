@@ -16,6 +16,7 @@
 #include "core/qguiappcurrentscreen.h"
 #include "tools/copy/copytool.h"
 #include "utils/abstractlogger.h"
+#include "utils/ocr.h"
 #include "utils/screengrabber.h"
 #include "utils/screenshotsaver.h"
 #include "widgets/capture/colorpicker.h"
@@ -327,7 +328,7 @@ CaptureWidget::~CaptureWidget()
         Flameshot::instance()->exportCapture(
           pixmap(), geometry, m_context.request);
     } else {
-        emit Flameshot::instance()->captureFailed();
+        emit Flameshot::instance() -> captureFailed();
     }
 }
 
@@ -645,10 +646,21 @@ void CaptureWidget::closeEvent(QCloseEvent* event)
             event->ignore();
             m_clipboardWorkaroundDone = true;
             m_context.request.removeTask(CaptureRequest::COPY);
+            QString ocrText;
+            if (m_context.request.tasks() & CaptureRequest::OCR) {
+                ocrText = Ocr::recognizeWithNotification(pixmap());
+                if (ocrText.isEmpty()) {
+                    // nothing to copy: close normally
+                    m_clipboardWorkaroundDone = false;
+                    event->accept();
+                    QWidget::closeEvent(event);
+                    return;
+                }
+            }
             AbstractLogger::info()
               << "GNOME Wayland detected; keeping capture window alive until "
                  "clipboard data is fetched.";
-            saveToClipboardGnomeWorkaround(pixmap(), this);
+            saveToClipboardGnomeWorkaround(pixmap(), this, ocrText);
             return;
         }
     }

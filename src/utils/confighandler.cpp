@@ -157,6 +157,8 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("useScreenCastCapture"        ,Bool               ( false         )),
     // Include the mouse cursor in ScreenCast captures
     OPTION("screenCastEmbedCursor"       ,Bool               ( false         )),
+    // Tesseract language(s) for `flameshot ocr`, e.g. "eng" or "eng+deu"
+    OPTION("ocrLanguage"                 ,String             ( "eng"         )),
     // Show the monitor selector even when the pointer's monitor is known
     OPTION("screenCastShowMonitorSelector",Bool              ( false         )),
     // Shell command printing the pointer position as "x, y" (logical global

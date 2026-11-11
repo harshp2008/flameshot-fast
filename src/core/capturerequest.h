@@ -27,6 +27,7 @@ public:
         PIN = 16,
         UPLOAD = 32,
         ACCEPT_ON_SELECT = 64,
+        OCR = 128, // with COPY: copy the recognized text instead of the image
     };
 
     CaptureRequest(CaptureMode mode,

@@ -65,6 +65,7 @@ void raiseAboveMenuBar(QWidget* widget)
 #include "core/qguiappcurrentscreen.h"
 #include "utils/abstractlogger.h"
 #include "utils/confighandler.h"
+#include "utils/ocr.h"
 #include "utils/screengrabber.h"
 #include "utils/screenshotsaver.h"
 #include "widgets/capture/capturewidget.h"
@@ -505,7 +506,14 @@ void Flameshot::exportCapture(const QPixmap& capture,
     }
 
     if (tasks & CR::COPY) {
-        FlameshotDaemon::copyToClipboard(capture);
+        if (tasks & CR::OCR) {
+            const QString text = Ocr::recognizeWithNotification(capture);
+            if (!text.isEmpty()) {
+                FlameshotDaemon::copyToClipboard(text);
+            }
+        } else {
+            FlameshotDaemon::copyToClipboard(capture);
+        }
     }
 
     if (tasks & CR::PIN) {

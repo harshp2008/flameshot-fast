@@ -292,6 +292,10 @@ int main(int argc, char* argv[])
     CommandArgument guiArgument(
       QStringLiteral("gui"),
       QObject::tr("Start a manual capture in GUI mode."));
+    CommandArgument ocrArgument(
+      QStringLiteral("ocr"),
+      QObject::tr("Like gui, but copying (Ctrl+C) puts the recognized text "
+                  "of the selection on the clipboard instead of the image."));
     CommandArgument configArgument(QStringLiteral("config"),
                                    QObject::tr("Configure") + " flameshot.");
     CommandArgument screenArgument(
@@ -428,6 +432,7 @@ int main(int argc, char* argv[])
 
     // Relationships
     parser.AddArgument(guiArgument);
+    parser.AddArgument(ocrArgument);
     parser.AddArgument(screenArgument);
     parser.AddArgument(fullArgument);
     parser.AddArgument(launcherArgument);
@@ -444,6 +449,16 @@ int main(int argc, char* argv[])
                         pinOption,
                         acceptOnSelectOption },
                       guiArgument);
+    parser.AddOptions({ pathOption,
+                        clipboardOption,
+                        delayOption,
+                        regionOption,
+                        useLastRegionOption,
+                        rawImageOption,
+                        selectionOption,
+                        pinOption,
+                        acceptOnSelectOption },
+                      ocrArgument);
     parser.AddOptions({ screenNumberOption,
                         editOption,
                         clipboardOption,
@@ -479,7 +494,8 @@ int main(int argc, char* argv[])
         Flameshot* flameshot = Flameshot::instance();
         flameshot->launcher();
         qApp->exec();
-    } else if (parser.isSet(guiArgument)) { // GUI
+    } else if (parser.isSet(guiArgument) ||
+               parser.isSet(ocrArgument)) { // GUI, OCR
         reinitializeAsQApplication(argc, argv, translator, qtTranslator);
 
         // Prevent multiple instances of 'flameshot gui' from running if not
@@ -510,6 +526,9 @@ int main(int argc, char* argv[])
         bool pin = parser.isSet(pinOption);
         bool acceptOnSelect = parser.isSet(acceptOnSelectOption);
         CaptureRequest req(CaptureRequest::GRAPHICAL_MODE, delay, path);
+        if (parser.isSet(ocrArgument)) {
+            req.addTask(CaptureRequest::OCR);
+        }
         if (!region.isEmpty()) {
             auto selectionRegion = Region().value(region).toRect();
             req.setInitialSelection(selectionRegion);
