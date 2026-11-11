@@ -340,6 +340,9 @@ void CaptureWidget::initButtons()
         (m_context.request.tasks() == CaptureRequest::PRINT_GEOMETRY)) {
         allButtonTypes.removeOne(CaptureTool::TYPE_ACCEPT);
         visibleButtonTypes.removeOne(CaptureTool::TYPE_ACCEPT);
+    } else if (m_context.request.tasks() == CaptureRequest::OCR) {
+        // `flameshot ocr` behaves like `gui`: keep every button, so Copy
+        // (Ctrl+C) and Accept (Enter) both copy the recognized text.
     } else {
         // Remove irrelevant buttons from both lists
         for (auto* buttonList : { &allButtonTypes, &visibleButtonTypes }) {
