@@ -198,6 +198,11 @@ CaptureWidget* Flameshot::gui(const CaptureRequest& req)
         m_captureWindow->raise();
 #else
         m_captureWindow->showFullScreen();
+        // Ask for keyboard focus explicitly (Wayland compositors may not give
+        // it to a window opened from a shortcut otherwise)
+        m_captureWindow->activateWindow();
+        m_captureWindow->raise();
+        m_captureWindow->setFocus(Qt::ActiveWindowFocusReason);
 //        m_captureWindow->show(); // For CaptureWidget Debugging under Linux
 #endif
         return m_captureWindow;

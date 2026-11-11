@@ -48,6 +48,10 @@ CaptureTool* AcceptTool::copy(QObject* parent)
 
 void AcceptTool::pressed(CaptureContext& context)
 {
+    if (context.request.tasks() & CaptureRequest::OCR) {
+        // `flameshot ocr`: accepting copies the recognized text too
+        context.request.addTask(CaptureRequest::COPY);
+    }
     emit requestAction(REQ_CAPTURE_DONE_OK);
     if (context.request.tasks() & CaptureRequest::PIN) {
         QRect geometry = context.selection;

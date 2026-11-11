@@ -1108,6 +1108,13 @@ void CaptureWidget::setToolSize(int size)
 
 void CaptureWidget::keyPressEvent(QKeyEvent* e)
 {
+    if (qEnvironmentVariableIntValue("FLAMESHOT_DEBUG_INPUT")) {
+        AbstractLogger::info(AbstractLogger::Stderr)
+          << QStringLiteral("key press %1 modifiers=%2 activeWindow=%3")
+               .arg(QKeySequence(e->key()).toString())
+               .arg(int(e->modifiers()))
+               .arg(isActiveWindow());
+    }
     // If the key is a digit, change the tool size
     bool ok;
     int digit = e->text().toInt(&ok);

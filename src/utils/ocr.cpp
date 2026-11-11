@@ -78,10 +78,7 @@ QString Ocr::recognizeWithNotification(const QPixmap& image)
         preview = preview.left(300) + QStringLiteral("...");
     }
     notification.sendMessage(
-      preview,
-      QObject::tr("Text copied (%1 characters)").arg(text.size()),
-      QString(),
-      6000);
+      preview, QObject::tr("Text Copied!"), QString(), 6000);
     AbstractLogger::info(AbstractLogger::Stderr | AbstractLogger::LogFile)
       << QObject::tr("OCR text copied to clipboard (%1 characters)")
            .arg(text.size());

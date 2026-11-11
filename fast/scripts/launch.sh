@@ -8,7 +8,9 @@ export XDG_CONFIG_HOME="${FLAMESHOT_FAST_CONFIG:-$D/cfg}"
 LOG="$D/last.log"
 # "auto": the Share dialog is shown only when this launcher and monitor layout
 # have no saved permission (first run, or after plugging/unplugging a monitor).
-FLAMESHOT_SCREENCAST_SETUP=auto "$D/bin/flameshot" "$SUB" 2>"$LOG"
+FLAMESHOT_DEBUG_INPUT=1 FLAMESHOT_SCREENCAST_SETUP=auto "$D/bin/flameshot" "$SUB" 2>"$LOG"
 rc=$?
 cat "$LOG" >&2
+{ echo "== $(date +%T) $SUB rc=$rc"; cat "$LOG"; } >>"$D/history.log"
+tail -n 300 "$D/history.log" >"$D/history.log.tmp" && mv "$D/history.log.tmp" "$D/history.log"
 exit $rc
