@@ -86,3 +86,4 @@ result-*
 # flameshot-fast local outputs
 /dist/
 /fast/out/
+/build-tests/
