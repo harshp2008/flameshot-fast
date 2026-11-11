@@ -132,6 +132,10 @@ QImage ScreenCastGrabber::imageFromBuffer(ScreenCastPixelFormat format,
     for (int y = 0; y < size.height(); ++y) {
         std::memcpy(image.scanLine(y), data + qint64(y) * stride, rowBytes);
     }
+    if (format == ScreenCastPixelFormat::RGBx) {
+        // Qt reads the unused byte of RGBX8888 as alpha in some code paths
+        return image.convertToFormat(QImage::Format_RGB32);
+    }
     return image;
 }
 
