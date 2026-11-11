@@ -2,7 +2,7 @@
 
 ## Report
 
-**What exists.** `screencast-capture` = Flameshot v15.0.0 + 10 small commits
+**What exists.** `screencast-capture` = Flameshot v15.0.0 + 15 small commits (4 of them are the code, the rest tests, scripts and docs)
 (`git log --oneline v15.0.0..screencast-capture`). It adds an optional,
 off-by-default backend (`useScreenCastCapture=true`) that grabs the needed
 monitor(s) through the ScreenCast portal + libpipewire as in-memory images and
