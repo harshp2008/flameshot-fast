@@ -6,6 +6,7 @@
 #include "utils/desktopinfo.h"
 
 #include <QEvent>
+#include <QHash>
 #include <QList>
 #include <QObject>
 #include <QPixmap>
@@ -53,9 +54,12 @@ private:
     QPixmap windowsScreenshot(int wid);
     QPixmap x11LegacyScreenshot();
     QPixmap unixScreenshot(bool& ok);
+    bool tryScreenCast(int preSelectedMonitor);
 
     DesktopInfo m_info;
     QPixmap Screenshot;
+    // Per-monitor images from the ScreenCast backend (monitor index -> image)
+    QHash<int, QPixmap> m_screenCastShots;
     int m_selectedMonitor;
     int m_highlightedMonitorPreview;
     QList<MonitorPreview*> m_monitorPreviews;

@@ -4,6 +4,7 @@
 #include "utils/abstractlogger.h"
 #include "utils/confighandler.h"
 #include "utils/monitorpreview.h"
+#include "utils/screencastgrabber.h"
 #include "utils/systemnotification.h"
 
 #include <QApplication>
@@ -26,6 +27,8 @@
 #include <QDebug>
 #endif
 
+#include <QElapsedTimer>
+
 #if !(defined(Q_OS_MACOS) || defined(Q_OS_WIN))
 #include "request.h"
 #include <QDBusInterface>
@@ -37,6 +40,25 @@
 #endif
 
 bool ScreenGrabber::m_monitorSelectionActive = false;
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+namespace {
+// After a ScreenCast failure skip the backend for a while, so a daemon is not
+// slowed down by repeated timeouts or permission dialogs.
+constexpr qint64 kScreenCastRetryDelayMs = 5 * 60 * 1000;
+qint64 s_screenCastRetryAfterMs = 0;
+
+qint64 monotonicMs()
+{
+    static QElapsedTimer timer = []() {
+        QElapsedTimer t;
+        t.start();
+        return t;
+    }();
+    return timer.elapsed();
+}
+} // namespace
+#endif
 
 ScreenGrabber::ScreenGrabber(QObject* parent)
   : QObject(parent)
@@ -228,6 +250,76 @@ QPixmap ScreenGrabber::unixScreenshot(bool& ok)
 #endif
 }
 
+// Try the optional ScreenCast backend. On success m_screenCastShots holds one
+// image for every monitor that may be needed; on any failure nothing changes
+// and the caller uses the regular Screenshot portal path.
+bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
+{
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+    m_screenCastShots.clear();
+    ConfigHandler config;
+    if (!config.useScreenCastCapture() || !m_info.waylandDetected() ||
+        config.useX11LegacyScreenshot()) {
+        return false;
+    }
+    if (monotonicMs() < s_screenCastRetryAfterMs) {
+        return false;
+    }
+
+    const QList<QScreen*> screens = QGuiApplication::screens();
+    QList<QRect> geometries;
+    for (QScreen* screen : screens) {
+        geometries.append(screen->geometry());
+    }
+    QList<int> wanted;
+    if (preSelectedMonitor >= 0 && preSelectedMonitor < screens.size()) {
+        wanted.append(preSelectedMonitor);
+    } else if (screens.size() == 1) {
+        wanted.append(0);
+    } else {
+        // The monitor is chosen after the grab (selector), so grab them all
+        for (int i = 0; i < screens.size(); ++i) {
+            wanted.append(i);
+        }
+    }
+
+    QElapsedTimer timer;
+    timer.start();
+    ScreenCastGrabber::Options options;
+    options.restoreToken = config.screenCastRestoreToken();
+    options.embedCursor = config.screenCastEmbedCursor();
+    ScreenCastGrabber::Result result =
+      ScreenCastGrabber().grab(geometries, wanted, options);
+
+    if (result.forgetToken) {
+        config.setScreenCastRestoreToken(QString());
+    } else if (!result.restoreToken.isEmpty()) {
+        config.setScreenCastRestoreToken(result.restoreToken);
+    }
+    if (!result.ok()) {
+        AbstractLogger::warning(AbstractLogger::Stderr |
+                                AbstractLogger::LogFile)
+          << tr("ScreenCast capture failed, using the screenshot portal: %1")
+               .arg(result.error);
+        s_screenCastRetryAfterMs = monotonicMs() + kScreenCastRetryDelayMs;
+        return false;
+    }
+
+    m_screenCastShots.clear();
+    for (auto it = result.images.cbegin(); it != result.images.cend(); ++it) {
+        m_screenCastShots.insert(it.key(), QPixmap::fromImage(it.value()));
+    }
+    AbstractLogger::info(AbstractLogger::Stderr | AbstractLogger::LogFile)
+      << QStringLiteral("screencast-capture-ms=%1 screens=%2")
+           .arg(timer.elapsed())
+           .arg(wanted.size());
+    return true;
+#else
+    Q_UNUSED(preSelectedMonitor)
+    return false;
+#endif
+}
+
 QPixmap ScreenGrabber::selectMonitorAndCrop(const QPixmap& fullScreenshot,
                                             bool& ok)
 {
@@ -326,9 +418,13 @@ QPixmap ScreenGrabber::grabEntireDesktop(bool& ok, int preSelectedMonitor)
     return screenshot;
 
 #elif defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
-    screenshot = unixScreenshot(ok);
-    if (!ok) {
-        return QPixmap();
+    // Optional fast path: per-monitor images, cropToMonitor() uses them
+    // instead of cropping the (then empty) full-desktop pixmap.
+    if (!tryScreenCast(preSelectedMonitor)) {
+        screenshot = unixScreenshot(ok);
+        if (!ok) {
+            return QPixmap();
+        }
     }
 #elif defined(Q_OS_WIN)
     screenshot = windowsScreenshot(wid);
@@ -643,6 +739,9 @@ QPixmap ScreenGrabber::cropToMonitor(const QPixmap& fullScreenshot,
                                      int monitorIndex)
 {
     const QList<QScreen*> screens = QGuiApplication::screens();
+    if (m_screenCastShots.contains(monitorIndex)) {
+        return m_screenCastShots.value(monitorIndex);
+    }
     if (monitorIndex >= screens.size()) {
         return fullScreenshot;
     }
