@@ -90,6 +90,30 @@ shown as before. Only the one monitor is grabbed in this mode (less data, a
 shorter sharing indicator). The command runs via `/bin/sh -c` from your own
 config file, like any shell command you configure.
 
+## `flameshot ocr`
+
+Same GUI as `flameshot gui` (same options), but **Ctrl+C / the copy button put
+the recognized text on the clipboard instead of the image**; save, pin etc. work
+as usual. Text comes from the `tesseract` command line tool
+(`sudo apt install tesseract-ocr tesseract-ocr-eng`; language via the
+`ocrLanguage` config key, e.g. `eng+deu`). Line and paragraph breaks are kept;
+form feeds and surrounding blank lines are removed. A desktop notification
+shows the first 300 characters (or "No text found"); it needs
+`showDesktopNotification=true` (Settings -> General -> "Show desktop
+notifications"), which also enables the "Capture saved to clipboard"
+notification for image copies.
+
+## Install (user level, no sudo)
+
+```bash
+fast/scripts/install.sh --build --shortcuts
+```
+
+Installs into `~/.local/opt/flameshot-fast`, writes its own config there,
+checks the dependencies (tesseract, spawn-at) and prints the one `apt` command
+for anything missing. `--shortcuts` creates Shift+Super+F (gui) and
+Shift+Super+O (ocr) test shortcuts and touches no other shortcut.
+
 ## The sharing indicator
 
 GNOME shows its orange screen-sharing indicator while a ScreenCast session is
