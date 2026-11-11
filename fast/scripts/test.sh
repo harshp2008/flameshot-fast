@@ -116,7 +116,8 @@ if command -v pipewire >/dev/null; then
     PIDS+=($!)
     for _ in $(seq 100); do [ -S "$PIPEWIRE_RUNTIME_DIR/pipewire-0" ] && break; sleep 0.05; done
     "$B/pw_source" >"$SB/source.out" 2>"$SB/source.err" &
-    PIDS+=($!)
+    SRC1=$!
+    PIDS+=("$SRC1")
     for _ in $(seq 100); do grep -q NODE_ID "$SB/source.out" && break; sleep 0.05; done
     NODE="$(sed -n 's/^NODE_ID=//p' "$SB/source.out")"
     if [ -n "$NODE" ]; then
@@ -148,6 +149,79 @@ if command -v pipewire >/dev/null; then
     fi
 else
     echo "SKIP  pipewire daemon not installed"
+fi
+
+echo "== flameshot binary (offscreen Qt, mock portals, private PipeWire) =="
+FS="${FLAMESHOT_BIN:-$ROOT/build/src/flameshot}"
+if [ -x "$FS" ] && [ -n "${NODE:-}" ]; then
+    kill "$SRC1" 2>/dev/null; wait "$SRC1" 2>/dev/null # sources link to every consumer
+    "$B/pw_source" 800 800 >"$SB/source2.out" 2>"$SB/source2.err" &
+    PIDS+=($!)
+    for _ in $(seq 100); do grep -q NODE_ID "$SB/source2.out" && break; sleep 0.05; done
+    NODE2="$(sed -n 's/^NODE_ID=//p' "$SB/source2.out")"
+    export XDG_SESSION_TYPE=wayland MOCK_SHOT="$SB/portal-shot.png"
+    export XDG_CONFIG_HOME="$SB/fs-cfg"
+    INI="$XDG_CONFIG_HOME/flameshot/flameshot.ini"
+
+    fs_capture() { # name -> runs `screen -n 0`, result in $SB/out/shot.png, log in $SB/fs.log
+        rm -rf "$SB/out"; mkdir -p "$SB/out"
+        timeout 40 "$FS" screen -n 0 -p "$SB/out" >"$SB/fs.log" 2>&1
+        FSRC=$?
+        FSPNG="$(ls "$SB"/out/*.png 2>/dev/null | head -1)"
+    }
+    fs_size() { python3 -c "
+import struct,sys
+d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct.unpack('>II', d[20:28])[1] if False else struct.unpack('>I', d[20:24])[0])" "$1"; }
+    new_cfg() { # use_screencast
+        rm -rf "$XDG_CONFIG_HOME"; mkdir -p "$XDG_CONFIG_HOME/flameshot"
+        printf '[General]\ndisabledTrayIcon=true\nshowStartupLaunchMessage=false\nuseScreenCastCapture=%s\n' "$1" >"$INI"
+    }
+
+    # A: enabled and working -> the ScreenCast image is what gets saved
+    new_cfg true; start_mock ok real "$NODE2:0,0,800,800"
+    MOCK_PW_SOCKET="$PIPEWIRE_RUNTIME_DIR/pipewire-0" fs_capture
+    if [ -n "$FSPNG" ] && [ "$(fs_size "$FSPNG")" = "800 800" ] && grep -q "screencast-capture-ms=" "$SB/fs.log" && ! grep -q '^Screenshot' "$MOCK_LOG"; then
+        pass "enabled: saved image is the 800x800 ScreenCast frame, Screenshot portal not used  [$(grep -o 'screencast-capture-ms=[0-9]* screens=[0-9]*' "$SB/fs.log")]"
+    else
+        fail "enabled + working (rc=$FSRC png=$FSPNG size=$(fs_size "$FSPNG"))"; sed 's/^/      /' "$SB/fs.log" | head; cat "$MOCK_LOG" | sed 's/^/      mock: /'
+    fi
+    grep -q '^screenCastRestoreToken=tok-new' "$INI" && pass "restore token stored in Flameshot's own config" || { fail "token stored"; cat "$INI"; }
+
+    # B: second capture sends the stored token back to the portal
+    MOCK_PW_SOCKET="$PIPEWIRE_RUNTIME_DIR/pipewire-0" fs_capture
+    grep -q 'SelectSources restore_token=tok-new' "$MOCK_LOG" && pass "stored token is passed to SelectSources on the next capture" || { fail "token reuse"; cat "$MOCK_LOG"; }
+
+    # C: user cancels the dialog -> Screenshot portal result is used
+    new_cfg true; start_mock cancel silent
+    fs_capture
+    if [ -n "$FSPNG" ] && grep -q '^Screenshot' "$MOCK_LOG" && grep -q "ScreenCast capture failed, using the screenshot portal" "$SB/fs.log"; then
+        pass "cancel: warning logged, stock Screenshot portal used, a capture was still saved"
+    else
+        fail "cancel fallback (rc=$FSRC png=$FSPNG)"; sed 's/^/      /' "$SB/fs.log" | head; fi
+
+    # D: PipeWire gives no frame -> fallback too (waits the 2.5 s frame timeout)
+    new_cfg true; start_mock ok silent "$NODE2:0,0,800,800"
+    fs_capture
+    if [ -n "$FSPNG" ] && grep -q '^Screenshot' "$MOCK_LOG" && grep -q "No video frame" "$SB/fs.log"; then
+        pass "no PipeWire frame: warning logged and stock path used"
+    else
+        fail "frame timeout fallback (rc=$FSRC)"; sed 's/^/      /' "$SB/fs.log" | head; fi
+
+    # E: portal without ScreenCast at all (only Screenshot) is covered by the
+    # absent case above; here: feature off (default) must not touch ScreenCast
+    new_cfg false; start_mock ok real "$NODE2:0,0,800,800"
+    fs_capture
+    if [ -n "$FSPNG" ] && grep -q '^Screenshot' "$MOCK_LOG" && ! grep -q 'CreateSession' "$MOCK_LOG"; then
+        pass "default (useScreenCastCapture=false): ScreenCast portal is never called"
+    else
+        fail "disabled by default (rc=$FSRC)"; cat "$MOCK_LOG"; fi
+
+    # F: no portal at all and feature on -> still a capture attempt on the stock path
+    stop_mock; new_cfg true
+    fs_capture
+    grep -q "ScreenCast capture failed" "$SB/fs.log" && pass "no portal service: ScreenCast failure logged, stock path attempted (fails here because no Screenshot portal either: rc=$FSRC)" || { fail "no portal"; head "$SB/fs.log"; }
+else
+    echo "SKIP  flameshot binary ($FS) not built or PipeWire e2e unavailable"
 fi
 
 echo

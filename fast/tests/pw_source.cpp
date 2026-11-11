@@ -10,7 +10,7 @@
 #include <spa/param/video/format-utils.h>
 #include <spa/pod/builder.h>
 
-static const int W = 320, H = 200;
+static int W = 320, H = 200; // optional argv: width height
 
 struct Data
 {
@@ -164,6 +164,10 @@ static const pw_stream_events streamEvents = { .version =
 int main(int argc, char** argv)
 {
     pw_init(&argc, &argv);
+    if (argc >= 3) {
+        W = atoi(argv[1]);
+        H = atoi(argv[2]);
+    }
     Data d;
     d.loop = pw_main_loop_new(nullptr);
     pw_context* ctx = pw_context_new(pw_main_loop_get_loop(d.loop), nullptr, 0);
