@@ -20,7 +20,8 @@ script, see FINDINGS for what is and is not verified here).
 
 ## Install on another computer
 
-See [docs/INSTALL.md](docs/INSTALL.md): a `.deb` (`fast/packaging/build-deb.sh`) plus
+One line: `curl -fsSL https://raw.githubusercontent.com/harshp2008/flameshot-fast/screencast-capture/fast/packaging/install.sh | bash`.
+Or see [docs/INSTALL.md](docs/INSTALL.md): a `.deb` (`fast/packaging/build-deb.sh`) plus
 `flameshot-fast-setup`, which installs the shortcuts. Quick local use follows.
 
 ## Use

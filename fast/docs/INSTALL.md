@@ -1,6 +1,17 @@
 # Installing flameshot-fast
 
-## A. Debian/Ubuntu package (recommended for another computer)
+## 0. One line (Ubuntu 24.04, amd64)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/harshp2008/flameshot-fast/screencast-capture/fast/packaging/install.sh | bash
+```
+
+Downloads the newest GitHub release, verifies its SHA-256, installs the `.deb` with
+`sudo apt` and runs `flameshot-fast-setup` for you (config, shortcuts, spawn-at).
+Remove again with `... | bash -s -- --uninstall`. Read the script first if you like:
+[fast/packaging/install.sh](../packaging/install.sh).
+
+## A. Debian/Ubuntu package by hand
 
 Built on Ubuntu 24.04 (amd64, Qt 6.4). Needs GNOME on Wayland for the fast path.
 
