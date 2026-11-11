@@ -15,6 +15,7 @@
 #include <QImageReader>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QMap>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
@@ -65,6 +66,46 @@ QString launcherLabel()
     unit.remove(QRegularExpression(QStringLiteral("\\.scope$")));
     unit.remove(QRegularExpression(QStringLiteral("-\\d+$")));
     return unit;
+}
+
+// Restore tokens are only valid while every monitor they cover still exists,
+// so keep one per launcher and monitor layout: "launcher|layout|token;...".
+QString layoutSignature()
+{
+    QStringList parts;
+    for (QScreen* screen : QGuiApplication::screens()) {
+        parts << QStringLiteral("%1:%2x%3")
+                   .arg(screen->name())
+                   .arg(screen->geometry().width())
+                   .arg(screen->geometry().height());
+    }
+    parts.sort();
+    return parts.join(QLatin1Char(','));
+}
+
+QMap<QString, QString> loadTokens(const QString& raw)
+{
+    QMap<QString, QString> tokens; // "launcher|layout" -> token
+    for (const QString& entry :
+         raw.split(QLatin1Char(';'), Qt::SkipEmptyParts)) {
+        const QStringList f = entry.split(QLatin1Char('|'));
+        if (f.size() == 3 && !f[2].isEmpty()) {
+            tokens.insert(f[0] + QLatin1Char('|') + f[1], f[2]);
+        }
+    }
+    return tokens;
+}
+
+QString saveTokens(QMap<QString, QString> tokens)
+{
+    while (tokens.size() > 8) {
+        tokens.erase(tokens.begin());
+    }
+    QStringList out;
+    for (auto it = tokens.cbegin(); it != tokens.cend(); ++it) {
+        out << it.key() + QLatin1Char('|') + it.value();
+    }
+    return out.join(QLatin1Char(';'));
 }
 
 qint64 monotonicMs()
@@ -326,37 +367,26 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
     if (monotonicMs() < s_screenCastRetryAfterMs) {
         return false;
     }
-    // Never open the permission dialog in the middle of a normal capture:
-    // it needs a human and blocks the screenshot. It is only shown when the
-    // user asks for it explicitly: FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui
+    // The permission dialog needs a human and blocks the screenshot, so a
+    // normal capture never opens it. It is shown when asked for explicitly
+    // (FLAMESHOT_SCREENCAST_SETUP=1) or, for shortcut launchers, only when
+    // this layout has no saved permission (FLAMESHOT_SCREENCAST_SETUP=auto).
+    const QString setupEnv = qEnvironmentVariable("FLAMESHOT_SCREENCAST_SETUP");
+    const QString tokenKey =
+      launcherLabel() + QLatin1Char('|') + layoutSignature();
+    QMap<QString, QString> tokens = loadTokens(config.screenCastRestoreToken());
+    QString token = tokens.value(tokenKey);
     const bool setupMode =
-      qEnvironmentVariableIntValue("FLAMESHOT_SCREENCAST_SETUP") != 0;
-    // Saved as "<launcher>|<token>"; only usable from the same launcher
-    const QString label = launcherLabel();
-    const QString saved = config.screenCastRestoreToken();
-    QString token;
-    if (!setupMode) {
-        if (saved.isEmpty()) {
-            AbstractLogger::info(AbstractLogger::Stderr |
-                                 AbstractLogger::LogFile)
-              << tr("ScreenCast capture has no saved permission, using the "
-                    "screenshot portal. Run once from the launcher you use "
-                    "(shortcut, terminal): FLAMESHOT_SCREENCAST_SETUP=1 "
-                    "flameshot gui");
-            return false;
-        }
-        if (saved.section(QLatin1Char('|'), 0, 0) != label ||
-            !saved.contains(QLatin1Char('|'))) {
-            AbstractLogger::info(AbstractLogger::Stderr |
-                                 AbstractLogger::LogFile)
-              << tr("The saved ScreenCast permission belongs to another "
-                    "launcher (%1), this one is '%2'. Using the screenshot "
-                    "portal. Run once from this launcher: "
-                    "FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui")
-                   .arg(saved.section(QLatin1Char('|'), 0, 0), label);
-            return false;
-        }
-        token = saved.section(QLatin1Char('|'), 1);
+      setupEnv == QLatin1String("1") ||
+      (setupEnv == QLatin1String("auto") && token.isEmpty());
+    if (setupMode) {
+        token.clear(); // send none: Start waits for the user (long timeout)
+    } else if (token.isEmpty()) {
+        AbstractLogger::info(AbstractLogger::Stderr | AbstractLogger::LogFile)
+          << tr("ScreenCast capture has no saved permission for this launcher "
+                "and monitor layout, using the screenshot portal. Run once: "
+                "FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui");
+        return false;
     }
 
     const QList<QScreen*> screens = QGuiApplication::screens();
@@ -379,17 +409,23 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
     QElapsedTimer timer;
     timer.start();
     ScreenCastGrabber::Options options;
-    // Setup mode sends no token, so Start waits for the user (long timeout)
     options.restoreToken = token;
     options.embedCursor = config.screenCastEmbedCursor();
     ScreenCastGrabber::Result result =
       ScreenCastGrabber().grab(geometries, wanted, options);
 
+    const QMap<QString, QString> before = tokens;
     if (result.forgetToken) {
-        config.setScreenCastRestoreToken(QString());
+        tokens.remove(tokenKey);
     } else if (!result.restoreToken.isEmpty()) {
-        config.setScreenCastRestoreToken(label + QLatin1Char('|') +
-                                         result.restoreToken);
+        tokens.insert(tokenKey, result.restoreToken);
+    } else if (!result.ok() && !token.isEmpty()) {
+        // The portal did not accept the saved token (changed monitors, dialog
+        // came up): drop it so the next capture can start a setup.
+        tokens.remove(tokenKey);
+    }
+    if (tokens != before) {
+        config.setScreenCastRestoreToken(saveTokens(tokens));
     }
     if (!result.ok()) {
         AbstractLogger::warning(AbstractLogger::Stderr |

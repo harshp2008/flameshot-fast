@@ -174,7 +174,7 @@ import struct,sys
 d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct.unpack('>II', d[20:28])[1] if False else struct.unpack('>I', d[20:24])[0])" "$1"; }
     new_cfg() { # use_screencast
         rm -rf "$XDG_CONFIG_HOME"; mkdir -p "$XDG_CONFIG_HOME/flameshot"
-        printf '[General]\ndisabledTrayIcon=true\nshowStartupLaunchMessage=false\nuseScreenCastCapture=%s\n' "$1" >"$INI"
+        printf '[General]\ndisabledTrayIcon=true\nshowStartupLaunchMessage=false\nuseScreenCastCapture=%s\nallowMultipleGuiInstances=true\n' "$1" >"$INI"
     }
 
     # A: enabled and working -> the ScreenCast image is what gets saved
@@ -205,10 +205,24 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
     start_mock ok real "$NODE2:0,0,800,800"
     sed -i 's/^screenCastRestoreToken=.*/screenCastRestoreToken=some-other-launcher|zzz/' "$INI"
     fs_capture
-    if ! grep -q 'CreateSession' "$MOCK_LOG" && grep -q "belongs to another launcher" "$SB/fs.log"; then
-        pass "token from another launcher is ignored: no portal call, hint logged, stock path used"
+    if ! grep -q 'CreateSession' "$MOCK_LOG" && grep -q "no saved permission for this launcher" "$SB/fs.log"; then
+        pass "token from another launcher/layout is ignored: no portal call, hint logged, stock path used"
     else
         fail "foreign-launcher token"; cat "$MOCK_LOG"; head "$SB/fs.log"; fi
+
+    # B3: launcher mode "auto": dialog only when this layout has no token
+    new_cfg true; start_mock ok real "$NODE2:0,0,800,800"
+    FLAMESHOT_SCREENCAST_SETUP=auto MOCK_PW_SOCKET="$PIPEWIRE_RUNTIME_DIR/pipewire-0" fs_capture
+    grep -q 'SelectSources restore_token= ' "$MOCK_LOG" && grep -q 'screencast-capture-ms' "$SB/fs.log" && grep -q '^screenCastRestoreToken=.*|.*|tok-new' "$INI" \
+        && pass "auto mode without a token: asks (setup), stores a per-layout token" || { fail "auto mode setup"; cat "$MOCK_LOG"; cat "$INI"; }
+    start_mock ok real "$NODE2:0,0,800,800"
+    FLAMESHOT_SCREENCAST_SETUP=auto MOCK_PW_SOCKET="$PIPEWIRE_RUNTIME_DIR/pipewire-0" fs_capture
+    grep -q 'SelectSources restore_token=tok-new' "$MOCK_LOG" && pass "auto mode with a token: normal silent capture, token sent" || { fail "auto mode with token"; cat "$MOCK_LOG"; }
+    # a layout change (different monitor set) = different key: token not used
+    sed -i 's/\(screenCastRestoreToken=[^|]*|\)[^|]*/\1other-layout:1x1/' "$INI"
+    start_mock ok real "$NODE2:0,0,800,800"
+    fs_capture
+    ! grep -q 'CreateSession' "$MOCK_LOG" && grep -q "no saved permission" "$SB/fs.log" && pass "different monitor layout: saved token not used, no dialog in a normal capture" || fail "layout change"
 
     # C: user cancels the dialog -> Screenshot portal result is used
     new_cfg true; start_mock cancel silent
@@ -250,7 +264,7 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
         if grep -q "OCR text copied to clipboard (50 characters)" "$SB/fs.log"; then
             pass "flameshot ocr: text recognized, line and paragraph breaks kept (50 chars)  [$(grep -o 'OCR text copied[^)]*)' "$SB/fs.log")]"
         else
-            fail "flameshot ocr"; sed 's/^/      /' "$SB/fs.log" | head; mkdir -p "$ROOT/fast/out"; cp "$SB"/out/*.png "$ROOT/fast/out/ocr-debug.png" 2>/dev/null
+            fail "flameshot ocr (rc=$?)"; cat "$SB/fs.log" "$SB/mock.out" "$MOCK_LOG" | head -20; sed 's/^/      /' "$SB/fs.log" | head; mkdir -p "$ROOT/fast/out"; cp "$SB"/out/*.png "$ROOT/fast/out/ocr-debug.png" 2>/dev/null
         fi
     else
         echo "SKIP  tesseract not installed"
