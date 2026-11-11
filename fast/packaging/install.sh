@@ -93,12 +93,14 @@ SUM_URL="$(printf '%s\n' "$urls" | grep 'SHA256SUMS$' | head -1 || true)"
 [ -n "$DEB_URL" ] || die "the release has no .deb file"
 [ -n "$SUM_URL" ] || die "the release has no SHA256SUMS file; refusing to install an unchecked package"
 
-DEB="$SB/$(basename "$DEB_URL")"
-say "Downloading $(basename "$DEB_URL")"
+DEB_NAME="$(basename "$DEB_URL")"
+DEB_NAME="${DEB_NAME//%2B/+}" # GitHub URL-encodes the plus sign
+DEB="$SB/$DEB_NAME"
+say "Downloading $DEB_NAME"
 curl -fL --progress-bar "$DEB_URL" -o "$DEB"
 curl -fsSL "$SUM_URL" -o "$SB/SHA256SUMS"
 say "Checking SHA-256"
-(cd "$SB" && grep " $(basename "$DEB")\$" SHA256SUMS | sha256sum -c -) ||
+(cd "$SB" && grep -F " $DEB_NAME" SHA256SUMS | sha256sum -c -) ||
     die "checksum mismatch; not installing"
 
 if [ "$DOWNLOAD_ONLY" -eq 1 ]; then
