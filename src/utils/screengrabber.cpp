@@ -301,7 +301,11 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
                                 AbstractLogger::LogFile)
           << tr("ScreenCast capture failed, using the screenshot portal: %1")
                .arg(result.error);
-        s_screenCastRetryAfterMs = monotonicMs() + kScreenCastRetryDelayMs;
+        // A permission that misses a monitor is fixed by the dialog on the
+        // next capture, so do not back off in that case.
+        if (!result.forgetToken) {
+            s_screenCastRetryAfterMs = monotonicMs() + kScreenCastRetryDelayMs;
+        }
         return false;
     }
 

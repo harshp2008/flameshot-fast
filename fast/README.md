@@ -89,8 +89,10 @@ changes nothing. Then rebuild and rerun `fast/scripts/test.sh`.
 ## Known limits
 
 * A fresh daemon must be granted the Share dialog once (needs a human).
-* The remembered permission must include every monitor; if a monitor is
-  missing the token is dropped and the dialog comes back next time.
+* The remembered permission must include every monitor (hold Shift/Ctrl in the
+  dialog); if a monitor is missing or its geometry changed, the token is dropped
+  and the dialog comes back on the next capture (no back-off). Single-monitor
+  captures (`screen -n N -e`) keep working while their monitor is in the grant.
 * The pointer cannot be read on Wayland from Qt; the monitor selector keeps
   highlighting Qt's idea of the current screen exactly as in stock v15
   (`captureActiveMonitor` still errors out on Wayland, unchanged).

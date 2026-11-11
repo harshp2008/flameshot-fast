@@ -48,7 +48,9 @@ was available to ask.
 
 10. **Failure cool-down of 5 minutes per process.** Alternative: retry every
     capture. Why: a daemon would otherwise pay a timeout or show the dialog on
-    every hotkey press after a cancel. 5 minutes is a guess, not a measurement.
+    every hotkey press after a cancel. 5 minutes is a guess, not a measurement. Exception: when the saved
+    permission lacks a monitor (token dropped, dialog due) there is no back-off,
+    so the next capture offers the dialog and the grant can be fixed at once.
 
 11. **Timeouts.** 3 s per portal step, 2.5 s for the first frame, 60 s for Start
     when no token exists (a human has to click), all in `Options`.
