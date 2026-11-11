@@ -11,6 +11,12 @@ LOG="$D/last.log"
 FLAMESHOT_DEBUG_INPUT=1 FLAMESHOT_SCREENCAST_SETUP=auto "$D/bin/flameshot" "$SUB" 2>"$LOG"
 rc=$?
 cat "$LOG" >&2
-{ echo "== $(date +%T) $SUB rc=$rc"; cat "$LOG"; } >>"$D/history.log"
+{
+    echo "== $(date +%T) $SUB rc=$rc"
+    cat "$LOG"
+    # what is on the clipboard right after the capture (debugging aid)
+    echo "clipboard types: $(timeout 2 wl-paste -l 2>&1 | tr '\n' ' ')"
+    echo "clipboard text: $(timeout 2 wl-paste --no-newline 2>/dev/null | head -c 100 | tr '\n' ' ')"
+} >>"$D/history.log"
 tail -n 300 "$D/history.log" >"$D/history.log.tmp" && mv "$D/history.log.tmp" "$D/history.log"
 exit $rc
