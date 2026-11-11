@@ -113,7 +113,8 @@ slowed by repeated timeouts or repeated dialogs.
 
 ### 3.8 Rebase cost
 
-Touched upstream files: `screengrabber.{h,cpp}` (about 40 lines),
+Touched upstream files: `screengrabber.{h,cpp}` (about 110 added lines, most of
+them the self-contained `tryScreenCast()`),
 `confighandler.{h,cpp}` (3 option lines + getters), `CMakeLists.txt` /
 `src/CMakeLists.txt` / `src/utils/CMakeLists.txt` (a few lines). Everything else
 is new files or under `fast/`.

@@ -9,8 +9,9 @@ the author's machine; (not measured) means it is an expectation, see
 Add an **optional, off-by-default** capture backend that grabs the monitor the
 user is capturing through `org.freedesktop.portal.ScreenCast` + PipeWire as an
 in-memory image, and falls back automatically to the existing Screenshot portal
-path on any failure. About 300 lines in two new files plus roughly 40 changed
-lines in `ScreenGrabber`, config and CMake; nothing changes unless the user
+path on any failure. About 1000 lines in two new files (clang-formatted, one third is
+PipeWire boilerplate) plus about 140 added lines in `ScreenGrabber`, config and
+CMake; nothing changes unless the user
 sets `useScreenCastCapture=true`.
 
 ## Motivation
