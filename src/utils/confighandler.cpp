@@ -103,6 +103,8 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
     OPTION("savePathFixed"               ,Bool               ( false         )),
     OPTION("saveAsFileExtension"         ,SaveFileExtension  (               )),
     OPTION("saveLastRegion"              ,Bool               ( false         )),
+    // Format copied by `flameshot color`: hex, rgb, hsl or hsv
+    OPTION("colorPickerFormat"           ,String             ( "hex"         )),
     // Copy the hex code to the clipboard when a color is grabbed (G)
     OPTION("copyGrabbedColor"            ,Bool               ( true          )),
     OPTION("uploadHistoryMax"            ,LowerBoundedInt    ( 0, 25         )),

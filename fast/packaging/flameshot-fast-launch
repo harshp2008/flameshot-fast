@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shortcut launcher:  flameshot-fast-launch [gui|ocr]
+# Shortcut launcher:  flameshot-fast-launch [gui|ocr|color]
 # The ScreenCast permission is remembered per launching application and per
 # monitor layout; "auto" shows the Share dialog only when it is missing (first
 # run, or after plugging/unplugging a monitor). Log: ~/.cache/flameshot-fast/

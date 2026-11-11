@@ -17,7 +17,9 @@ add_library(screencast_under_test STATIC
     ${SRC}/screencastgrabber.cpp
     ${SRC}/screencastgrabber.h
     ${SRC}/request.cpp
-    ${SRC}/request.h)
+    ${SRC}/request.h
+    ${SRC}/colornames.cpp
+    ${SRC}/colornames.h)
 target_include_directories(screencast_under_test PUBLIC ${SRC})
 target_compile_definitions(screencast_under_test PUBLIC FLAMESHOT_HAVE_PIPEWIRE=1)
 target_link_libraries(screencast_under_test PUBLIC

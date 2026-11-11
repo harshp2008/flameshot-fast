@@ -1,4 +1,5 @@
 // Pure-logic tests for the ScreenCast grabber: no session bus, no PipeWire.
+#include "colornames.h"
 #include "screencastgrabber.h"
 
 #include <QtTest>
@@ -20,6 +21,10 @@ private slots:
     void bufferBgraAndRgba();
     void bufferStridePadding();
     void bufferRejectsBadInput();
+    void colorFormats();
+    void colorNames();
+    void colorShades();
+    void colorHistory();
 };
 
 static ScreenCastStream S(quint32 id, int x, int y, int w, int h)
@@ -199,6 +204,73 @@ void TstPure::bufferRejectsBadInput()
     QVERIFY(ScreenCastGrabber::imageFromBuffer(
               F::BGRx, QSize(100000, 1), 400000, px, 16)
               .isNull());
+}
+
+// Values from Microsoft's Color Picker documentation (cbb6ac)
+void TstPure::colorFormats()
+{
+    const QColor c(203, 182, 172);
+    QCOMPARE(ColorNames::hex(c), QString("#cbb6ac"));
+    QCOMPARE(ColorNames::rgb(c), QString("rgb(203, 182, 172)"));
+    QCOMPARE(ColorNames::hsl(c), QString("hsl(19, 23%, 74%)"));
+    QCOMPARE(ColorNames::hsv(c), QString("hsv(19, 15%, 80%)"));
+    QCOMPARE(ColorNames::format(c, "RGB"), ColorNames::rgb(c));
+    QCOMPARE(ColorNames::format(c, "nonsense"), ColorNames::hex(c));
+    // grays have no hue: it must be printed as 0, not -1
+    QCOMPARE(ColorNames::hsl(QColor(128, 128, 128)), QString("hsl(0, 0%, 50%)"));
+    QCOMPARE(ColorNames::hsv(QColor(0, 0, 0)), QString("hsv(0, 0%, 0%)"));
+    QCOMPARE(ColorNames::hsv(QColor(156, 182, 135)), QString("hsv(93, 26%, 71%)"));
+}
+
+void TstPure::colorNames()
+{
+    QCOMPARE(ColorNames::nameFor(QColor("#a8c7d2")), QString("Sky blue"));
+    QCOMPARE(ColorNames::nameFor(QColor("#adcad4")), QString("Sky blue"));
+    QCOMPARE(ColorNames::nameFor(QColor("#f0d9d5")), QString("Rose"));
+    QCOMPARE(ColorNames::nameFor(QColor("#000000")), QString("Black"));
+    QCOMPARE(ColorNames::nameFor(QColor("#ffffff")), QString("White"));
+    QCOMPARE(ColorNames::nameFor(QColor("#ff0000")), QString("Red"));
+}
+
+void TstPure::colorShades()
+{
+    const QColor c("#e02020");
+    const auto s = ColorNames::shades(c, 7);
+    QCOMPARE(s.size(), 7);
+    QCOMPARE(s[3], c);
+    QVERIFY(s.first().lightnessF() > s.last().lightnessF());
+}
+
+void TstPure::colorHistory()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.path() + "/sub/hist.json";
+    {
+        ColorNames::History h(path);
+        QVERIFY(h.colors().isEmpty());
+        h.add(QColor("#111111"));
+        h.add(QColor("#222222"));
+        h.add(QColor("#111111")); // moves to the front, no duplicate
+        QCOMPARE(h.colors(), QList<QColor>({ QColor("#111111"), QColor("#222222") }));
+    }
+    {
+        ColorNames::History h(path); // persisted
+        QCOMPARE(h.colors().size(), 2);
+        h.remove(QColor("#111111"));
+        QCOMPARE(h.colors(), QList<QColor>({ QColor("#222222") }));
+        for (int i = 0; i < 40; ++i) {
+            h.add(QColor::fromRgb(i, i, i));
+        }
+        QCOMPARE(h.colors().size(), 24);
+        QCOMPARE(h.colors().first(), QColor::fromRgb(39, 39, 39));
+    }
+    QFile bad(path);
+    QVERIFY(bad.open(QIODevice::WriteOnly));
+    bad.write("not json at all");
+    bad.close();
+    ColorNames::History h(path); // corrupt file: starts empty, no crash
+    QVERIFY(h.colors().isEmpty());
 }
 
 QTEST_APPLESS_MAIN(TstPure)

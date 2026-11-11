@@ -1,5 +1,6 @@
 add_subdirectory(panel)
 add_subdirectory(capture)
+add_subdirectory(colorpicker)
 
 # Required to generate MOC
 target_sources(

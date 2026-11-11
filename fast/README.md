@@ -109,6 +109,20 @@ shows the first 300 characters (or "No text found"); it needs
 notifications"), which also enables the "Capture saved to clipboard"
 notification for image copies.
 
+## `flameshot color` (color picker)
+
+A Windows PowerToys-style color picker. It freezes the monitor under the
+pointer, shows a **magnifier** with the pixel grid and a small card with the
+color under the pointer (hex and a name such as "Sky blue"). Click or Enter
+picks, Esc or right click cancels, the mouse wheel zooms. The color is copied
+(`colorPickerFormat` in `flameshot.ini`: `hex` default, `rgb`, `hsl`, `hsv`) and
+a **Color Picker window** opens with the history of picked colors, shades of the
+color, and HEX / RGB / HSL / HSV rows with copy buttons ("Copied to clipboard").
+Its Pick button starts again; right-click a history swatch to remove it. The
+history is `~/.local/share/flameshot/color-history.json` (24 colors). Only the
+monitor under the pointer is shown, as with `gui` (it uses the same fast capture).
+`flameshot-fast-setup` binds it to Ctrl+Shift+G.
+
 ## Extra shortcuts inside the capture window
 
 | Key | Action |

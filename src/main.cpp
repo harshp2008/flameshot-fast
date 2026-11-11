@@ -20,6 +20,7 @@
 #include "utils/filenamehandler.h"
 #include "utils/pathinfo.h"
 #include "utils/valuehandler.h"
+#include "widgets/colorpicker/colorpicker.h"
 
 #if !(defined(Q_OS_MACOS) || defined(Q_OS_WIN))
 #include "core/flameshotdbusadapter.h"
@@ -296,6 +297,10 @@ int main(int argc, char* argv[])
       QStringLiteral("ocr"),
       QObject::tr("Like gui, but copying (Ctrl+C) puts the recognized text "
                   "of the selection on the clipboard instead of the image."));
+    CommandArgument colorArgument(
+      QStringLiteral("color"),
+      QObject::tr("Pick a color from the screen with a magnifier and copy "
+                  "it (HEX by default)."));
     CommandArgument configArgument(QStringLiteral("config"),
                                    QObject::tr("Configure") + " flameshot.");
     CommandArgument screenArgument(
@@ -433,6 +438,7 @@ int main(int argc, char* argv[])
     // Relationships
     parser.AddArgument(guiArgument);
     parser.AddArgument(ocrArgument);
+    parser.AddArgument(colorArgument);
     parser.AddArgument(screenArgument);
     parser.AddArgument(fullArgument);
     parser.AddArgument(launcherArgument);
@@ -494,6 +500,11 @@ int main(int argc, char* argv[])
         Flameshot* flameshot = Flameshot::instance();
         flameshot->launcher();
         qApp->exec();
+    } else if (parser.isSet(colorArgument)) { // COLOR PICKER
+        reinitializeAsQApplication(argc, argv, translator, qtTranslator);
+        const int colorExitCode = runColorPicker();
+        delete qApp;
+        return colorExitCode;
     } else if (parser.isSet(guiArgument) ||
                parser.isSet(ocrArgument)) { // GUI, OCR
         reinitializeAsQApplication(argc, argv, translator, qtTranslator);

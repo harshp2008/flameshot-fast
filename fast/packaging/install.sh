@@ -8,7 +8,7 @@
 #   2. installs it with apt (asks for your sudo password; this replaces the
 #      distribution's `flameshot`)
 #   3. runs `flameshot-fast-setup` as YOUR user: config keys, the shortcuts
-#      Super+Shift+S / Super+Shift+T / Super+Print, and spawn-at
+#      Super+Shift+S / Super+Shift+T / Super+Print / Ctrl+Shift+G, and spawn-at
 #
 # Options (after `bash -s --` when piped):
 #   --uninstall       undo the per-user setup and remove the package
@@ -128,6 +128,7 @@ fi
 echo
 say "Done"
 echo "  Super+Shift+S  capture image      Super+Shift+T  capture + copy text (OCR)      Super+Print  capture image"
+echo "  Ctrl+Shift+G   color picker (magnifier, click copies the color)"
 echo "  First capture: tick ALL screens in the Share dialog and press Share."
 echo "  Log out and in once so the pointer helper (GNOME extension) loads."
 if pgrep -x flameshot >/dev/null; then

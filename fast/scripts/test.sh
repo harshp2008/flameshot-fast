@@ -161,6 +161,7 @@ if [ -x "$FS" ] && [ -n "${NODE:-}" ]; then
     NODE2="$(sed -n 's/^NODE_ID=//p' "$SB/source2.out")"
     export XDG_SESSION_TYPE=wayland MOCK_SHOT="$SB/portal-shot.png"
     export XDG_CONFIG_HOME="$SB/fs-cfg"
+    export XDG_DATA_HOME="$SB/fs-data"; mkdir -p "$XDG_DATA_HOME"
     INI="$XDG_CONFIG_HOME/flameshot/flameshot.ini"
 
     fs_capture() { # name -> runs `screen -n 0`, result in $SB/out/shot.png, log in $SB/fs.log
@@ -268,6 +269,33 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
         fi
     else
         echo "SKIP  tesseract not installed"
+    fi
+
+    # H: `flameshot color` (stand-alone color picker), scripted: no person, widgets rendered to PNG
+    if python3 -c "import PIL" 2>/dev/null; then
+        python3 - "$SB/colors.png" <<'PY'
+import sys
+from PIL import Image, ImageDraw
+im = Image.new("RGB", (800, 800), (168, 199, 210))
+ImageDraw.Draw(im).rectangle([380, 380, 420, 420], fill=(203, 182, 172))
+im.save(sys.argv[1])
+PY
+        MOCK_SHOT="$SB/portal.png" MOCK_SHOT_SRC="$SB/colors.png" start_mock ok silent
+        new_cfg false
+        rm -rf "$SB/pick"
+        FLAMESHOT_COLORPICKER_DUMP="$SB/pick" FLAMESHOT_COLORPICKER_AT=400,400 timeout 60 "$FS" color >"$SB/fs.log" 2>&1
+        if grep -q "picked #cbb6ac" "$SB/fs.log" && grep -q "hsl=hsl(19, 23%, 74%)" "$SB/fs.log" && [ -s "$SB/pick/overlay.png" ] && [ -s "$SB/pick/window.png" ]; then
+            pass "flameshot color: pixel picked from the frozen screen, all four formats shown, overlay and window rendered  [$(grep -o 'hex=.*' "$SB/fs.log")]"
+        else
+            fail "flameshot color"; head "$SB/fs.log"
+        fi
+        if find "$XDG_DATA_HOME" -name color-history.json -exec grep -q cbb6ac {} + 2>/dev/null; then
+            pass "flameshot color: picked color stored in the history file (sandboxed data dir)"
+        else
+            fail "color history file"
+        fi
+    else
+        echo "SKIP  flameshot color (python3 PIL missing)"
     fi
 else
     echo "SKIP  flameshot binary ($FS) not built or PipeWire e2e unavailable"

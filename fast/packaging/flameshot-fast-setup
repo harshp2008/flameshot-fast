@@ -9,6 +9,7 @@ Does, for the current user only:
   * GNOME shortcuts:  Super+Shift+S  capture image
                       Super+Shift+T  capture and copy recognized TEXT (OCR)
                       Super+Print    capture image
+                      Ctrl+Shift+G   color picker (magnifier, copies the color)
     An existing custom shortcut on the same key is updated, not duplicated.
   * installs spawn-at (pointer query, GNOME extension) if it is missing
 Everything changed is recorded in ~/.local/share/flameshot-fast/backup.json;
@@ -209,6 +210,7 @@ def setup(a):
             ("<Shift><Super>s", "Flameshot FAST: capture image", f"{launcher} gui", "flameshot-fast-gui"),
             ("<Shift><Super>t", "Flameshot FAST: capture text (OCR)", f"{launcher} ocr", "flameshot-fast-ocr"),
             ("<Super>Print", "Flameshot FAST: capture image (Super+Print)", f"{launcher} gui", "flameshot-fast-print"),
+            ("<Control><Shift>g", "Flameshot FAST: color picker", f"{launcher} color", "flameshot-fast-color"),
         ]
         paths = gs_get_list(S, "custom-keybindings")
         existing = {}
