@@ -648,7 +648,7 @@ void CaptureWidget::closeEvent(QCloseEvent* event)
             m_context.request.removeTask(CaptureRequest::COPY);
             QString ocrText;
             if (m_context.request.tasks() & CaptureRequest::OCR) {
-                ocrText = Ocr::recognizeWithNotification(pixmap());
+                ocrText = Ocr::recognizeWithNotification(pixmap(), this);
                 if (ocrText.isEmpty()) {
                     // nothing to copy: close normally
                     m_clipboardWorkaroundDone = false;

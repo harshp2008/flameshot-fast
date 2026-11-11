@@ -7,9 +7,12 @@
 #include "utils/systemnotification.h"
 
 #include <QBuffer>
+#include <QEventLoop>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QTimer>
+#include <QWidget>
 
 QString Ocr::tidy(const QString& raw)
 {
@@ -83,15 +86,29 @@ bool Ocr::copyTextPersistent(const QString& text)
            wlCopy.exitCode() == 0;
 }
 
-QString Ocr::recognizeWithNotification(const QPixmap& image)
+void Ocr::pause(int ms)
+{
+    QEventLoop loop;
+    QTimer::singleShot(ms, &loop, &QEventLoop::quit);
+    loop.exec();
+}
+
+QString Ocr::recognizeWithNotification(const QPixmap& image,
+                                       QWidget* hideBeforeNotify)
 {
     QString error;
     const QString text = recognize(image, error);
-    SystemNotification notification;
     if (!error.isEmpty()) {
         AbstractLogger::error() << error;
         return QString();
     }
+    if (hideBeforeNotify) {
+        // GNOME Shell keeps banners in the drawer while the primary monitor
+        // has a fullscreen window, so hide the capture window first.
+        hideBeforeNotify->hide();
+        pause(300);
+    }
+    SystemNotification notification;
     if (text.isEmpty()) {
         notification.sendMessage(QObject::tr("No text found in the selection."),
                                  QObject::tr("Nothing copied"),
@@ -107,6 +124,7 @@ QString Ocr::recognizeWithNotification(const QPixmap& image)
     }
     notification.sendMessage(
       preview, QObject::tr("Text Copied!"), QString(), 6000);
+    pause(150); // let the asynchronous D-Bus call leave before we exit
     AbstractLogger::info(AbstractLogger::Stderr | AbstractLogger::LogFile)
       << QObject::tr("OCR text copied to clipboard (%1 characters)")
            .arg(text.size());

@@ -8,6 +8,7 @@
 #include "utils/desktopinfo.h"
 #include "utils/filenamehandler.h"
 #include "utils/globalvalues.h"
+#include "utils/ocr.h"
 
 #include <QByteArray>
 #include <QDebug>
@@ -328,11 +329,16 @@ private:
         if (m_notified || m_owner.isNull())
             return;
         m_notified = true;
-        AbstractLogger::info() << QObject::tr("Capture saved to clipboard.");
         QPointer<QWidget> guard = m_owner;
         QTimer::singleShot(0, [guard]() {
             if (guard)
                 guard->close();
+            // Notify only after the fullscreen window is gone: GNOME Shell
+            // keeps banners in the drawer while the monitor is fullscreen.
+            Ocr::pause(300);
+            AbstractLogger::info()
+              << QObject::tr("Capture saved to clipboard.");
+            Ocr::pause(150);
         });
     }
 

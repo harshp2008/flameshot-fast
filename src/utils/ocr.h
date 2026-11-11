@@ -6,6 +6,8 @@
 #include <QPixmap>
 #include <QString>
 
+class QWidget;
+
 /**
  * Text recognition through the `tesseract` command line tool (not linked, so
  * Flameshot only needs it when the `ocr` subcommand is used).
@@ -28,6 +30,11 @@ bool copyTextPersistent(const QString& text);
 
 /// recognize() plus a desktop notification showing what was (not) found.
 /// Returns the text to copy, empty when nothing should be copied.
-QString recognizeWithNotification(const QPixmap& image);
+QString recognizeWithNotification(const QPixmap& image,
+                                  QWidget* hideBeforeNotify = nullptr);
+
+/// Spins the event loop for `ms` (lets D-Bus messages and the compositor
+/// catch up without blocking the GUI thread)
+void pause(int ms);
 
 }
