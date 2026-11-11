@@ -672,7 +672,8 @@ void CaptureWidget::closeEvent(QCloseEvent* event)
                 QWidget::closeEvent(event);
                 return;
             }
-            AbstractLogger::info()
+            AbstractLogger::info(AbstractLogger::Stderr |
+                                 AbstractLogger::LogFile)
               << "GNOME Wayland detected; keeping capture window alive until "
                  "clipboard data is fetched.";
             saveToClipboardGnomeWorkaround(pixmap(), this, ocrText);
