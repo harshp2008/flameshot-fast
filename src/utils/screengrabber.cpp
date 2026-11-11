@@ -9,6 +9,7 @@
 
 #include <QApplication>
 #include <QEventLoop>
+#include <QFile>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QImageReader>
@@ -18,6 +19,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QScreen>
 #include <QTimer>
 #include <QWidget>
@@ -47,6 +49,23 @@ namespace {
 // slowed down by repeated timeouts or permission dialogs.
 constexpr qint64 kScreenCastRetryDelayMs = 5 * 60 * 1000;
 qint64 s_screenCastRetryAfterMs = 0;
+
+// The portal remembers permissions per launching application (a terminal, a
+// GNOME shortcut and another app each get their own entry), so a restore token
+// only works for the launcher that created it. Label tokens with the systemd
+// scope name of this process (without the pid) to notice a mismatch.
+QString launcherLabel()
+{
+    QFile f(QStringLiteral("/proc/self/cgroup"));
+    if (!f.open(QIODevice::ReadOnly)) {
+        return QString();
+    }
+    const QString text = QString::fromUtf8(f.readAll()).trimmed();
+    QString unit = text.section(QLatin1Char('/'), -1);
+    unit.remove(QRegularExpression(QStringLiteral("\\.scope$")));
+    unit.remove(QRegularExpression(QStringLiteral("-\\d+$")));
+    return unit;
+}
 
 qint64 monotonicMs()
 {
@@ -270,12 +289,32 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
     // user asks for it explicitly: FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui
     const bool setupMode =
       qEnvironmentVariableIntValue("FLAMESHOT_SCREENCAST_SETUP") != 0;
-    if (config.screenCastRestoreToken().isEmpty() && !setupMode) {
-        AbstractLogger::info(AbstractLogger::Stderr | AbstractLogger::LogFile)
-          << tr("ScreenCast capture has no saved permission, using the "
-                "screenshot portal. Run once: "
-                "FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui");
-        return false;
+    // Saved as "<launcher>|<token>"; only usable from the same launcher
+    const QString label = launcherLabel();
+    const QString saved = config.screenCastRestoreToken();
+    QString token;
+    if (!setupMode) {
+        if (saved.isEmpty()) {
+            AbstractLogger::info(AbstractLogger::Stderr |
+                                 AbstractLogger::LogFile)
+              << tr("ScreenCast capture has no saved permission, using the "
+                    "screenshot portal. Run once from the launcher you use "
+                    "(shortcut, terminal): FLAMESHOT_SCREENCAST_SETUP=1 "
+                    "flameshot gui");
+            return false;
+        }
+        if (saved.section(QLatin1Char('|'), 0, 0) != label ||
+            !saved.contains(QLatin1Char('|'))) {
+            AbstractLogger::info(AbstractLogger::Stderr |
+                                 AbstractLogger::LogFile)
+              << tr("The saved ScreenCast permission belongs to another "
+                    "launcher (%1), this one is '%2'. Using the screenshot "
+                    "portal. Run once from this launcher: "
+                    "FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui")
+                   .arg(saved.section(QLatin1Char('|'), 0, 0), label);
+            return false;
+        }
+        token = saved.section(QLatin1Char('|'), 1);
     }
 
     const QList<QScreen*> screens = QGuiApplication::screens();
@@ -298,7 +337,8 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
     QElapsedTimer timer;
     timer.start();
     ScreenCastGrabber::Options options;
-    options.restoreToken = config.screenCastRestoreToken();
+    // Setup mode sends no token, so Start waits for the user (long timeout)
+    options.restoreToken = token;
     options.embedCursor = config.screenCastEmbedCursor();
     ScreenCastGrabber::Result result =
       ScreenCastGrabber().grab(geometries, wanted, options);
@@ -306,7 +346,8 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
     if (result.forgetToken) {
         config.setScreenCastRestoreToken(QString());
     } else if (!result.restoreToken.isEmpty()) {
-        config.setScreenCastRestoreToken(result.restoreToken);
+        config.setScreenCastRestoreToken(label + QLatin1Char('|') +
+                                         result.restoreToken);
     }
     if (!result.ok()) {
         AbstractLogger::warning(AbstractLogger::Stderr |

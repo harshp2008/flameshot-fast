@@ -195,11 +195,20 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
     else
         fail "enabled + working (rc=$FSRC png=$FSPNG size=$(fs_size "$FSPNG"))"; sed 's/^/      /' "$SB/fs.log" | head; cat "$MOCK_LOG" | sed 's/^/      mock: /'
     fi
-    grep -q '^screenCastRestoreToken=tok-new' "$INI" && pass "restore token stored in Flameshot's own config" || { fail "token stored"; cat "$INI"; }
+    grep -q '^screenCastRestoreToken=.*|tok-new' "$INI" && pass "restore token stored in Flameshot's own config" || { fail "token stored"; cat "$INI"; }
 
     # B: second capture sends the stored token back to the portal
     MOCK_PW_SOCKET="$PIPEWIRE_RUNTIME_DIR/pipewire-0" fs_capture
     grep -q 'SelectSources restore_token=tok-new' "$MOCK_LOG" && pass "stored token is passed to SelectSources on the next capture" || { fail "token reuse"; cat "$MOCK_LOG"; }
+
+    # B2: a token saved by another launcher is neither sent nor used, no dialog
+    start_mock ok real "$NODE2:0,0,800,800"
+    sed -i 's/^screenCastRestoreToken=.*/screenCastRestoreToken=some-other-launcher|zzz/' "$INI"
+    fs_capture
+    if ! grep -q 'CreateSession' "$MOCK_LOG" && grep -q "belongs to another launcher" "$SB/fs.log"; then
+        pass "token from another launcher is ignored: no portal call, hint logged, stock path used"
+    else
+        fail "foreign-launcher token"; cat "$MOCK_LOG"; head "$SB/fs.log"; fi
 
     # C: user cancels the dialog -> Screenshot portal result is used
     new_cfg true; start_mock cancel silent
