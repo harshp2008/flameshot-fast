@@ -73,6 +73,31 @@ script, see FINDINGS for what is and is not verified here).
        -c fast/out/cfg-patched -s useScreenCastCapture=true
    ```
 
+## Skipping the monitor selector
+
+On Wayland Qt cannot read the pointer, so v15 always shows the monitor selector.
+With the fast backend you can pick the monitor under the pointer instead: set a
+command that prints the pointer as `x, y` (logical global coordinates) and
+leave the selector off (default):
+
+```ini
+screenCastPointerCommand=/home/you/.local/bin/spawn-at query pointer
+screenCastShowMonitorSelector=false   ; true = always show the selector
+```
+
+If the command is empty, fails, or the point is on no monitor, the selector is
+shown as before. Only the one monitor is grabbed in this mode (less data, a
+shorter sharing indicator). The command runs via `/bin/sh -c` from your own
+config file, like any shell command you configure.
+
+## The sharing indicator
+
+GNOME shows its orange screen-sharing indicator while a ScreenCast session is
+open. It cannot be hidden for one application (deliberate security feature;
+only a global extension hiding it for every app could). Sessions are closed
+right after the first frame is copied, but the indicator can appear in the
+captured picture of the top bar.
+
 ## What is covered
 
 | Command | Behaviour |
