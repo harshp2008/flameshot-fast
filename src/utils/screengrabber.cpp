@@ -265,6 +265,18 @@ bool ScreenGrabber::tryScreenCast(int preSelectedMonitor)
     if (monotonicMs() < s_screenCastRetryAfterMs) {
         return false;
     }
+    // Never open the permission dialog in the middle of a normal capture:
+    // it needs a human and blocks the screenshot. It is only shown when the
+    // user asks for it explicitly: FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui
+    const bool setupMode =
+      qEnvironmentVariableIntValue("FLAMESHOT_SCREENCAST_SETUP") != 0;
+    if (config.screenCastRestoreToken().isEmpty() && !setupMode) {
+        AbstractLogger::info(AbstractLogger::Stderr | AbstractLogger::LogFile)
+          << tr("ScreenCast capture has no saved permission, using the "
+                "screenshot portal. Run once: "
+                "FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui");
+        return false;
+    }
 
     const QList<QScreen*> screens = QGuiApplication::screens();
     QList<QRect> geometries;

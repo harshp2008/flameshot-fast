@@ -178,8 +178,18 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
     }
 
     # A: enabled and working -> the ScreenCast image is what gets saved
+    # A0: no saved permission, normal capture: no dialog, ScreenCast not even tried
     new_cfg true; start_mock ok real "$NODE2:0,0,800,800"
+    fs_capture
+    if ! grep -q 'CreateSession' "$MOCK_LOG" && grep -q '^Screenshot' "$MOCK_LOG" && grep -q "FLAMESHOT_SCREENCAST_SETUP=1" "$SB/fs.log"; then
+        pass "no saved permission: dialog is never opened in a normal capture, hint logged, stock path used"
+    else
+        fail "no-token normal capture"; cat "$MOCK_LOG"; fi
+    # A: explicit setup run (FLAMESHOT_SCREENCAST_SETUP=1) -> ScreenCast image is what gets saved
+    new_cfg true; start_mock ok real "$NODE2:0,0,800,800"
+    export FLAMESHOT_SCREENCAST_SETUP=1
     MOCK_PW_SOCKET="$PIPEWIRE_RUNTIME_DIR/pipewire-0" fs_capture
+    unset FLAMESHOT_SCREENCAST_SETUP
     if [ -n "$FSPNG" ] && [ "$(fs_size "$FSPNG")" = "800 800" ] && grep -q "screencast-capture-ms=" "$SB/fs.log" && ! grep -q '^Screenshot' "$MOCK_LOG"; then
         pass "enabled: saved image is the 800x800 ScreenCast frame, Screenshot portal not used  [$(grep -o 'screencast-capture-ms=[0-9]* screens=[0-9]*' "$SB/fs.log")]"
     else
@@ -193,7 +203,7 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
 
     # C: user cancels the dialog -> Screenshot portal result is used
     new_cfg true; start_mock cancel silent
-    fs_capture
+    FLAMESHOT_SCREENCAST_SETUP=1 fs_capture
     if [ -n "$FSPNG" ] && grep -q '^Screenshot' "$MOCK_LOG" && grep -q "ScreenCast capture failed, using the screenshot portal" "$SB/fs.log"; then
         pass "cancel: warning logged, stock Screenshot portal used, a capture was still saved"
     else
@@ -201,7 +211,7 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
 
     # D: PipeWire gives no frame -> fallback too (waits the 2.5 s frame timeout)
     new_cfg true; start_mock ok silent "$NODE2:0,0,800,800"
-    fs_capture
+    FLAMESHOT_SCREENCAST_SETUP=1 fs_capture
     if [ -n "$FSPNG" ] && grep -q '^Screenshot' "$MOCK_LOG" && grep -q "No video frame" "$SB/fs.log"; then
         pass "no PipeWire frame: warning logged and stock path used"
     else
@@ -218,7 +228,7 @@ d=open(sys.argv[1],'rb').read(); print(struct.unpack('>II', d[16:24])[0], struct
 
     # F: no portal at all and feature on -> still a capture attempt on the stock path
     stop_mock; new_cfg true
-    fs_capture
+    FLAMESHOT_SCREENCAST_SETUP=1 fs_capture
     grep -q "ScreenCast capture failed" "$SB/fs.log" && pass "no portal service: ScreenCast failure logged, stock path attempted (fails here because no Screenshot portal either: rc=$FSRC)" || { fail "no portal"; head "$SB/fs.log"; }
 else
     echo "SKIP  flameshot binary ($FS) not built or PipeWire e2e unavailable"

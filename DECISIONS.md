@@ -81,3 +81,11 @@ was available to ask.
 17. **`bench.sh` restarts the daemon for every run** (cold, consistent for stock
     and patched) and kills only the PIDs it started; it refuses to run if any
     `flameshot` process or D-Bus name already exists.
+
+18. **No permission dialog during normal captures; explicit setup only
+    (`FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui`).** After a first install on
+    the real desktop the dialog appeared on every shortcut press (nothing
+    ticked, and a no-back-off rule re-prompted each time) and the fallback
+    capture lagged the laptop. Whether GNOME ties the token to the launching
+    context ("bash" appeared as the requester) is NOT established; the cause
+    seen is a missing grant plus the re-prompt rule.

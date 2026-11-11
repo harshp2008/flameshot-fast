@@ -49,10 +49,21 @@ script, see FINDINGS for what is and is not verified here).
    temp directory (see [../TODO_FOR_HARSH.md](../TODO_FOR_HARSH.md) for the exact
    first-run steps).
 
-4. First run only: GNOME shows a **Share** dialog. Tick **all** monitors and
+4. One-time setup (needs you): a normal capture **never** opens the permission
+   dialog; without a saved permission it logs a hint and uses the stock path.
+   Grant it explicitly, from the same launcher you will normally use:
+
+   ```bash
+   FLAMESHOT_SCREENCAST_SETUP=1 flameshot gui
+   ```
+
+   In the GNOME dialog click **every** monitor so they are all selected (Share
+   stays greyed until something is selected), keep "Remember this selection",
    press Share. Flameshot stores the returned restore token in its own config;
-   later captures are silent. If you cancel, Flameshot logs a warning and uses
-   the normal Screenshot portal, and does not ask again for 5 minutes.
+   later captures are silent. If you cancel, a warning is logged and the normal
+   Screenshot portal is used (no re-prompt for 5 minutes). If a monitor is
+   missing from the grant or the layout changes, the token is dropped and the
+   fast path stays off until you run the setup command again.
 
 5. Benchmark (stock vs patched, same harness):
 
