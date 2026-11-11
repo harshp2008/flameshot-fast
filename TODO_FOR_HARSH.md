@@ -31,8 +31,10 @@ falls back to the stock Screenshot portal path on any failure. Code: new
   15 s portal timeout); `full` 10.7 / 10.8 / 13.0 s (4 of 5). Patched build with
   the feature off: `gui` 7.9 s (1 run), no regression visible.
 
-**NOT verified.**
-* **Any live ScreenCast capture and therefore any patched benchmark number.**
+**Live result (added after Harsh ran it).** Token honoured on fresh start; capture call 161-294 ms typical (one 2.1 s outlier); time to window `gui` median 0.63 s (min 0.41, max 4.36) vs stock 8.29 s; `edit0` median 0.78 s vs 6.70 s; 5/5 ok each. See FINDINGS section 3.
+
+**NOT verified (the first bullet below is now superseded by the live result above).**
+* ~~Any live ScreenCast capture~~
   No restore token existed and I did not open the Share dialog while you were
   away. The 0.15 s figure for the patched `gui` is your standalone-script
   measurement plus my inference; mine is only "our client takes 56 to 76 ms

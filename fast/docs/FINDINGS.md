@@ -109,12 +109,29 @@ FetchContent, as upstream does, so it needs network access.)
   `Session.Close`). `Start` was **not** called, so no dialog appeared and
   nothing was shared.
 
-### Live capture with the patched build [not measured]
+### Live capture with the patched build [M, run by Harsh, 2026-11-11]
 
-No restore token exists yet, so the first live request would open the GNOME
-Share dialog, which only Harsh can accept. It was not triggered. Therefore
-there are **no live numbers for the patched build**. The harness is ready:
-see `TODO_FOR_HARSH.md`.
+First live run: the Share dialog was answered once (first attempt failed with
+`No ScreenCast stream matches screen 0 (1920x1080+0+0)`, so the token was
+dropped and the fallback to the stock portal worked; cause not determined,
+probably a monitor not ticked). The next attempt took 9.45 s (dialog), the one
+after **230 ms for 3 screens with no dialog**: GNOME honoured the restore token
+from a fresh daemon start (host app, isolated config).
+
+`fast/scripts/bench.sh -b dist/bin/flameshot -l patched -n 5 -m gui,edit0 -c fast/out/cfg-patched`,
+same harness and layout caveats as the baseline (seconds to first real-size window):
+
+| Mode | ok | min | median | max | raw | capture call (ms, from log) |
+|---|---|---|---|---|---|---|
+| `gui` (3 screens grabbed) | 5/5 | 0.405 | 0.634 | 4.364 | 0.634 4.364 0.443 0.405 0.664 | 255 2104 184 177 294 |
+| `edit0` (1 screen) | 5/5 | 0.531 | 0.783 | 1.865 | 1.865 0.824 0.783 0.729 0.531 | 589 281 243 239 161 |
+
+Versus stock medians: `gui` 8.29 -> 0.63 s (about 13x), `edit0` 6.70 -> 0.78 s
+(about 8.5x); no failed runs (stock failed 1 in 5 for `edit0`). Outliers
+(`gui` 4.36 s with a 2.1 s capture call, `edit0` 1.87 s) are slow first frames
+or a cold start; cause not investigated. n=5, so treat medians as indicative.
+Still not checked live: that the picture is visually correct and current, the
+sharing indicator, and the monitor-selection UX.
 
 Numbers that exist for the fast path:
 
@@ -129,7 +146,7 @@ Numbers that exist for the fast path:
 
 ## 4. What is not verified
 
-* Anything live: the Share dialog flow, mutter's first frame (is it the current
+* Image content live (visual check), the first-attempt stream mismatch, mutter's first frame (is it the current
   picture of an idle screen? does the first buffer carry data or is it empty?
   the code skips empty/corrupted buffers and waits up to 2.5 s), the laptop
   panel's stream, the streams of the fractionally scaled virtual displays
