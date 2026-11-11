@@ -28,6 +28,10 @@ and `wl-clipboard` (OCR and clipboard persistence).
 
 * adds `useScreenCastCapture`, `showDesktopNotification`, `screenCastPointerCommand`
   to `~/.config/flameshot/flameshot.ini` (original saved as `flameshot.ini.before-flameshot-fast`)
+* asks (when run in a terminal) which color the toolbar should use: your desktop theme's accent
+  color (read from the GTK theme, for example `Yaru-sage`), Flameshot's original purple,
+  classic blue, or a hex color you type; Enter leaves it unchanged. Skip the question with
+  `--theme theme|default|blue|keep|#rrggbb`.
 * sets three GNOME shortcuts (an existing custom shortcut on the same key is updated):
 
   | Key | Action |

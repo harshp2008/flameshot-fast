@@ -2,7 +2,7 @@
 """Per-user setup for flameshot-fast (no root needed).
 
   flameshot-fast-setup [--undo] [--launcher PATH] [--config-dir DIR]
-                       [--no-config] [--no-spawn-at] [--no-shortcuts]
+                       [--no-config] [--no-spawn-at] [--no-shortcuts] [--theme CHOICE]
 
 Does, for the current user only:
   * adds a few keys to flameshot.ini (backed up first)
@@ -31,7 +31,7 @@ BACKUP = os.path.join(STATE, "backup.json")
 
 
 def gs(*args):
-    return subprocess.check_output(["gsettings", *args], text=True).strip()
+    return subprocess.check_output(["gsettings", *args], text=True, stderr=subprocess.DEVNULL).strip()
 
 
 def gs_get_list(schema, key):
@@ -73,6 +73,96 @@ def set_ini(path, kv):
         f.write("\n".join(lines) + "\n")
 
 
+# Accent colors of the Ubuntu "Yaru-<name>" themes and of GNOME's accent-color setting
+YARU = {"": ("orange", "#e95420"), "bark": ("bark", "#787859"), "sage": ("sage", "#657b69"),
+        "olive": ("olive", "#4b8501"), "viridian": ("viridian", "#03875b"),
+        "prussiangreen": ("prussian green", "#308280"), "blue": ("blue", "#0073e5"),
+        "purple": ("purple", "#7764d8"), "magenta": ("magenta", "#b34cb3"), "red": ("red", "#da3450")}
+GNOME_ACCENT = {"blue": "#3584e4", "teal": "#2190a4", "green": "#3a944a", "yellow": "#c88800",
+                "orange": "#ed5b00", "red": "#e62d42", "pink": "#d56199", "purple": "#9141ac",
+                "slate": "#6f8396"}
+FLAMESHOT_DEFAULT = "#740096"
+CLASSIC_BLUE = "#000789"
+
+
+def detect_theme_color():
+    """(name, '#rrggbb') of the desktop's accent color, or None when it cannot be read."""
+    try:
+        acc = gs("get", "org.gnome.desktop.interface", "accent-color").strip("'")
+        if acc in GNOME_ACCENT:
+            return acc, GNOME_ACCENT[acc]
+    except Exception:
+        pass
+    try:
+        theme = gs("get", "org.gnome.desktop.interface", "gtk-theme").strip("'")
+    except Exception:
+        return None
+    if theme.startswith("Yaru"):
+        key = theme[4:].lstrip("-")
+        if key.endswith("dark"):
+            key = key[:-4].rstrip("-")
+        if key in YARU:
+            return YARU[key]
+    return None
+
+
+def valid_hex(text):
+    return len(text) == 7 and text[0] == "#" and all(c in "0123456789abcdefABCDEF" for c in text[1:])
+
+
+def contrast_of(hexcolor):
+    """Flameshot's own ratio: the contrast color is a third of the UI color."""
+    r, g, b = (int(hexcolor[i:i + 2], 16) // 3 for i in (1, 3, 5))
+    return "#%02x%02x%02x" % (r, g, b)
+
+
+def choose_theme(a):
+    """Returns '#rrggbb' for uiColor, or None to leave it as it is."""
+    detected = detect_theme_color()
+    choice = a.theme
+    if choice is None:
+        try:
+            tin = open("/dev/tty", "r")
+            tout = open("/dev/tty", "w")
+        except OSError:
+            return None  # not interactive: leave the color alone
+        with tin, tout:
+            tty = tout
+            print("\nColor of the Flameshot toolbar and menus:", file=tty)
+            if detected:
+                print(f"  1) match your desktop theme ({detected[0]}, {detected[1]})", file=tty)
+            else:
+                print("  1) match your desktop theme (not detected on this system)", file=tty)
+            print(f"  2) Flameshot's original color (purple, {FLAMESHOT_DEFAULT})", file=tty)
+            print(f"  3) classic blue ({CLASSIC_BLUE})", file=tty)
+            print("  4) custom color (you type #rrggbb)", file=tty)
+            print("  Enter) leave it as it is", file=tty)
+            tty.write("Choose [1-4, Enter]: ")
+            tty.flush()
+            ans = tin.readline().strip()
+            if ans == "4":
+                tty.write("Color as #rrggbb: ")
+                tty.flush()
+                ans = tin.readline().strip()
+                choice = ans if valid_hex(ans) else None
+                if choice is None:
+                    print("not a valid color, leaving it as it is", file=tty)
+            else:
+                choice = {"1": "theme", "2": "default", "3": "blue"}.get(ans)
+    if choice in (None, "keep"):
+        return None
+    if choice == "theme":
+        if not detected:
+            print("could not read the desktop theme color; leaving the color as it is")
+            return None
+        return detected[1]
+    if choice == "default":
+        return FLAMESHOT_DEFAULT
+    if choice == "blue":
+        return CLASSIC_BLUE
+    return choice if valid_hex(choice) else None
+
+
 def setup(a):
     backup = load_backup()
     backup.setdefault("time", time.strftime("%F %T"))
@@ -105,6 +195,11 @@ def setup(a):
         kv = {"useScreenCastCapture": "true", "showDesktopNotification": "true"}
         if os.path.exists(spawn):
             kv["screenCastPointerCommand"] = f"{spawn} query pointer"
+        ui = choose_theme(a)
+        if ui:
+            kv["uiColor"] = ui
+            kv["contrastUiColor"] = contrast_of(ui)
+            print(f"toolbar color: {ui}")
         set_ini(ini, kv)
         print(f"config updated: {ini}")
 
@@ -180,6 +275,7 @@ def main():
     ap.add_argument("--no-config", action="store_true")
     ap.add_argument("--no-spawn-at", action="store_true")
     ap.add_argument("--no-shortcuts", action="store_true")
+    ap.add_argument("--theme", help="toolbar color without asking: theme | default | blue | keep | #rrggbb")
     a = ap.parse_args()
     if not shutil.which("gsettings") and not a.no_shortcuts:
         sys.exit("gsettings not found (GNOME required for the shortcuts; use --no-shortcuts)")
