@@ -97,8 +97,17 @@ DEB_NAME="$(basename "$DEB_URL")"
 DEB_NAME="${DEB_NAME//%2B/+}" # GitHub URL-encodes the plus sign
 DEB="$SB/$DEB_NAME"
 say "Downloading $DEB_NAME"
-curl -fL --progress-bar "$DEB_URL" -o "$DEB"
-curl -fsSL "$SUM_URL" -o "$SB/SHA256SUMS"
+# A stalled connection (slow CDN node, broken IPv6 route) must not hang forever:
+# give up after 20 s below 10 kB/s, retry, and on the last try force IPv4.
+fetch() { curl -fL --connect-timeout 15 --speed-limit 10240 --speed-time 20 "$@"; }
+ok=0
+for try in 1 2 3; do
+    extra=(); [ "$try" -eq 3 ] && extra=(-4)
+    if fetch --progress-bar "${extra[@]}" "$DEB_URL" -o "$DEB"; then ok=1; break; fi
+    echo "download attempt $try failed${extra:+ (IPv4)}; retrying" >&2
+done
+[ "$ok" -eq 1 ] || die "could not download $DEB_URL; check your connection and re-run"
+fetch -sS "$SUM_URL" -o "$SB/SHA256SUMS"
 say "Checking SHA-256"
 (cd "$SB" && grep -F " $DEB_NAME" SHA256SUMS | sha256sum -c -) ||
     die "checksum mismatch; not installing"
