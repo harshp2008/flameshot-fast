@@ -9,9 +9,11 @@
 #include "utils/filenamehandler.h"
 #include "utils/globalvalues.h"
 #include "utils/ocr.h"
+#include "utils/systemnotification.h"
 
 #include <QByteArray>
 #include <QDebug>
+#include <QDir>
 #include <QImageWriter>
 #include <QPixmap>
 #include <QProcess>
@@ -330,15 +332,38 @@ private:
             return;
         m_notified = true;
         QPointer<QWidget> guard = m_owner;
-        QTimer::singleShot(0, [guard]() {
+        const QImage image = m_image;
+        QTimer::singleShot(0, [guard, image]() {
             if (guard)
                 guard->close();
             // Notify only after the fullscreen window is gone: GNOME Shell
             // keeps banners in the drawer while the monitor is fullscreen.
-            Ocr::pause(300);
-            AbstractLogger::info()
+            Ocr::pause(350);
+            QString preview;
+            if (!image.isNull()) {
+                const QString dir = QStandardPaths::writableLocation(
+                  QStandardPaths::CacheLocation);
+                QDir().mkpath(dir);
+                preview = dir + QStringLiteral("/notification-preview.png");
+                image
+                  .scaled(
+                    192, 192, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+                  .save(preview, "PNG");
+            }
+            AbstractLogger::info(AbstractLogger::Stderr |
+                                 AbstractLogger::LogFile)
               << QObject::tr("Capture saved to clipboard.");
-            Ocr::pause(150);
+            SystemNotification().sendMessage(
+              image.isNull()
+                ? QObject::tr("Capture saved to clipboard.")
+                : QObject::tr("%1 x %2 px image is on the clipboard.")
+                    .arg(image.width())
+                    .arg(image.height()),
+              QObject::tr("Image Copied!"),
+              QString(),
+              6000,
+              preview);
+            Ocr::pause(200);
         });
     }
 

@@ -54,7 +54,8 @@ void SystemNotification::sendMessage(const QString& text,
 void SystemNotification::sendMessage(const QString& text,
                                      const QString& title,
                                      const QString& savePath,
-                                     const int timeout)
+                                     const int timeout,
+                                     const QString& imagePath)
 {
     if (!ConfigHandler().showDesktopNotification()) {
         return;
@@ -80,6 +81,11 @@ void SystemNotification::sendMessage(const QString& text,
             // allows the notification to be dragged and dropped
             hintsMap[QStringLiteral("x-kde-urls")] =
               QStringList({ fullPath.toString() });
+        }
+
+        if (!imagePath.isEmpty()) {
+            // small preview shown next to the text
+            hintsMap[QStringLiteral("image-path")] = imagePath;
         }
 
         args << (qAppName())                 // appname

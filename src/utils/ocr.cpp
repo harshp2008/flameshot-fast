@@ -7,10 +7,12 @@
 #include "utils/systemnotification.h"
 
 #include <QBuffer>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QThread>
 #include <QTimer>
 #include <QWidget>
 
@@ -88,9 +90,16 @@ bool Ocr::copyTextPersistent(const QString& text)
 
 void Ocr::pause(int ms)
 {
+    QElapsedTimer elapsed;
+    elapsed.start();
     QEventLoop loop;
     QTimer::singleShot(ms, &loop, &QEventLoop::quit);
     loop.exec();
+    // The loop returns at once when the application is already quitting;
+    // still give the compositor / notification daemon the time.
+    if (elapsed.elapsed() < ms) {
+        QThread::msleep(ms - elapsed.elapsed());
+    }
 }
 
 QString Ocr::recognizeWithNotification(const QPixmap& image,

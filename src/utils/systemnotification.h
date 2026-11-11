@@ -18,7 +18,8 @@ public:
     void sendMessage(const QString& text,
                      const QString& title,
                      const QString& savePath,
-                     const int timeout = 5000);
+                     const int timeout = 5000,
+                     const QString& imagePath = QString());
 
 private:
     QDBusInterface* m_interface;
