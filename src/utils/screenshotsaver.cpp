@@ -15,6 +15,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QImageWriter>
+#include <QPainter>
 #include <QPixmap>
 #include <QProcess>
 #include <QTemporaryFile>
@@ -345,10 +346,19 @@ private:
                   QStandardPaths::CacheLocation);
                 QDir().mkpath(dir);
                 preview = dir + QStringLiteral("/notification-preview.png");
-                image
-                  .scaled(
-                    192, 192, Qt::KeepAspectRatio, Qt::SmoothTransformation)
-                  .save(preview, "PNG");
+                // GNOME draws the preview into a square: letterbox it on a
+                // transparent square canvas so it is not stretched.
+                constexpr int side = 256;
+                QImage canvas(side, side, QImage::Format_ARGB32);
+                canvas.fill(Qt::transparent);
+                const QImage fitted = image.scaled(
+                  side, side, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QPainter painter(&canvas);
+                painter.drawImage((side - fitted.width()) / 2,
+                                  (side - fitted.height()) / 2,
+                                  fitted);
+                painter.end();
+                canvas.save(preview, "PNG");
             }
             AbstractLogger::info(AbstractLogger::Stderr |
                                  AbstractLogger::LogFile)
